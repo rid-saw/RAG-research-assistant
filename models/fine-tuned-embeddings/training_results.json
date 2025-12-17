@@ -1,0 +1,17 @@
+{
+  "before": {
+    "hits@10": 1.0,
+    "recall@10": 1.0,
+    "mrr": 0.8904761904761904,
+    "total_queries": 55
+  },
+  "after": {
+    "hits@10": 1.0,
+    "recall@10": 1.0,
+    "mrr": 0.9075757575757575,
+    "total_queries": 55
+  },
+  "training_pairs": 220,
+  "eval_pairs": 55,
+  "epochs": 3
+}
