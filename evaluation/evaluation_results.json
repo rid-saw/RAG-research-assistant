@@ -1,0 +1,120 @@
+{
+  "settings": {
+    "num_negatives": 100,
+    "n_folds": 5,
+    "seed": 42,
+    "total_pairs": 275,
+    "unique_passages": 152
+  },
+  "base_model": {
+    "name": "all-MiniLM-L6-v2",
+    "average": {
+      "mrr": 0.7493,
+      "hits@1": 0.6545,
+      "hits@5": 0.8618,
+      "hits@10": 0.9018,
+      "ndcg@10": 0.7836,
+      "total_queries": 275
+    },
+    "per_fold": [
+      {
+        "mrr": 0.7504,
+        "hits@1": 0.6545,
+        "hits@5": 0.8727,
+        "hits@10": 0.9091,
+        "ndcg@10": 0.7863,
+        "total_queries": 55
+      },
+      {
+        "mrr": 0.7623,
+        "hits@1": 0.6545,
+        "hits@5": 0.8909,
+        "hits@10": 0.9091,
+        "ndcg@10": 0.7965,
+        "total_queries": 55
+      },
+      {
+        "mrr": 0.8,
+        "hits@1": 0.7273,
+        "hits@5": 0.8727,
+        "hits@10": 0.9091,
+        "ndcg@10": 0.8236,
+        "total_queries": 55
+      },
+      {
+        "mrr": 0.7417,
+        "hits@1": 0.6727,
+        "hits@5": 0.8364,
+        "hits@10": 0.9091,
+        "ndcg@10": 0.7794,
+        "total_queries": 55
+      },
+      {
+        "mrr": 0.692,
+        "hits@1": 0.5636,
+        "hits@5": 0.8364,
+        "hits@10": 0.8727,
+        "ndcg@10": 0.732,
+        "total_queries": 55
+      }
+    ]
+  },
+  "finetuned_model": {
+    "path": "models/fine-tuned-embeddings",
+    "average": {
+      "mrr": 0.9149,
+      "hits@1": 0.8691,
+      "hits@5": 0.9709,
+      "hits@10": 0.9855,
+      "ndcg@10": 0.9317,
+      "total_queries": 275
+    },
+    "per_fold": [
+      {
+        "mrr": 0.8844,
+        "hits@1": 0.8364,
+        "hits@5": 0.9455,
+        "hits@10": 0.9818,
+        "ndcg@10": 0.9067,
+        "total_queries": 55
+      },
+      {
+        "mrr": 0.9121,
+        "hits@1": 0.8727,
+        "hits@5": 0.9636,
+        "hits@10": 0.9818,
+        "ndcg@10": 0.929,
+        "total_queries": 55
+      },
+      {
+        "mrr": 0.9295,
+        "hits@1": 0.8909,
+        "hits@5": 0.9818,
+        "hits@10": 0.9818,
+        "ndcg@10": 0.9414,
+        "total_queries": 55
+      },
+      {
+        "mrr": 0.9384,
+        "hits@1": 0.8909,
+        "hits@5": 0.9818,
+        "hits@10": 1.0,
+        "ndcg@10": 0.9537,
+        "total_queries": 55
+      },
+      {
+        "mrr": 0.9102,
+        "hits@1": 0.8545,
+        "hits@5": 0.9818,
+        "hits@10": 0.9818,
+        "ndcg@10": 0.9276,
+        "total_queries": 55
+      }
+    ]
+  },
+  "improvement": {
+    "mrr": 22.11,
+    "hits@1": 32.78,
+    "hits@10": 9.27
+  }
+}

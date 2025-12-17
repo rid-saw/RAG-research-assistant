@@ -1,0 +1,129 @@
+{
+  "papers": [
+    {
+      "arxiv_id": "1706.03762",
+      "title": "Attention Is All You Need",
+      "category": "Foundation Models"
+    },
+    {
+      "arxiv_id": "1810.04805",
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers",
+      "category": "Foundation Models"
+    },
+    {
+      "arxiv_id": "2102.12092",
+      "title": "Zero-Shot Text-to-Image Generation (DALL-E)",
+      "category": "Generative"
+    },
+    {
+      "arxiv_id": "2109.00512",
+      "title": "Common Objects in 3D (CO3D)",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2204.11918",
+      "title": "Google Scanned Objects",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2207.10660",
+      "title": "Omni3D: 3D Object Detection in the Wild",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2209.14988",
+      "title": "DreamFusion: Text-to-3D using 2D Diffusion",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2212.00792",
+      "title": "SparseFusion: View-conditioned Diffusion",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2304.02602",
+      "title": "3D-Aware Diffusion Models",
+      "category": "Generative"
+    },
+    {
+      "arxiv_id": "2306.16928",
+      "title": "One-2-3-45: Single Image to 3D Mesh",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2311.07885",
+      "title": "One-2-3-45++: Improved 3D Generation",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2312.08963",
+      "title": "LEMON: 3D Human-Object Interaction",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2408.08234",
+      "title": "Comparative Evaluation of 3D Reconstruction Methods",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2412.01506",
+      "title": "Structured 3D Latents (TRELLIS)",
+      "category": "3D Vision"
+    },
+    {
+      "arxiv_id": "2501.01880",
+      "title": "Long Context vs. RAG for LLMs",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2501.05874",
+      "title": "VideoRAG: Retrieval over Video Corpus",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2501.07391",
+      "title": "Enhancing RAG: Best Practices",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2501.09751",
+      "title": "OmniThink: Expanding Knowledge Boundaries",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2504.11544",
+      "title": "NodeRAG: Graph-based RAG",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2504.20734",
+      "title": "UniversalRAG: Diverse Modalities",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2506.16035",
+      "title": "Vision-Guided Chunking for RAG",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2507.09477",
+      "title": "Agentic RAG with Deep Reasoning",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2508.01959",
+      "title": "SitEmb: Context-Aware Dense Retrieval",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2508.10419",
+      "title": "ComoRAG: Memory-Organized RAG",
+      "category": "RAG"
+    },
+    {
+      "arxiv_id": "2510.12323",
+      "title": "RAG-Anything: All-in-One Framework",
+      "category": "RAG"
+    }
+  ]
+}
