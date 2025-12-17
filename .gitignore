@@ -1,7 +1,7 @@
 # Virtual environment
 venv/
 
-# Environment variables (API keys)
+# Environment variables
 .env
 
 # Python cache
@@ -11,18 +11,18 @@ __pycache__/
 # macOS
 .DS_Store
 
-# PDFs - NEVER commit these (download from arXiv at runtime)
+# PDFs
 data/*.pdf
 
-# Training data (contains paper excerpts - users should generate their own)
+# Training data
 evaluation/training_pairs.json
 evaluation/training_pairs_*.json
 evaluation/chunks_for_qa.json
 
-# Vector database - NOW COMMITTED (embeddings are okay to share)
+# Vector database
 # chroma_db/
 
-# Model weights - NOW COMMITTED (fine-tuned embeddings)
+# Model weights (fine-tuned embeddings)
 # models/fine-tuned-embeddings/
 
 # Checkpoints
