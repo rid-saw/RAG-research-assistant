@@ -8,7 +8,7 @@ A production-ready RAG system for querying academic papers with **22% MRR improv
 
 ## Live Demo
 
-Try the deployed application: [HuggingFace Spaces Demo](https://huggingface.co/spaces/rid-saw/rag-research-assistant)
+Try the deployed application: [HuggingFace Spaces Demo](https://huggingface.co/spaces/rid-saw/rag-research-assistant) 🚀 
 
 ## Highlights
 
