@@ -114,23 +114,11 @@ After initial retrieval, a CrossEncoder model re-scores candidates by seeing que
 ### 3. Fine-tuned Embeddings
 Domain-adapted `all-MiniLM-L6-v2` trained on 275 LLM-generated Q&A pairs using `MultipleNegativesRankingLoss`.
 
-### 4. Rigorous Evaluation
+### 4. Evaluation
 - 5-fold cross-validation for stable metrics
 - 100 negative distractors per query (realistic retrieval simulation)
 - Multiple metrics: MRR, Hits@k, NDCG@10
 
-## Skills Demonstrated
-
-This project showcases:
-
-- **ML Pipeline Design**: End-to-end document processing → embedding → retrieval → generation
-- **Hybrid Retrieval**: Combining semantic and keyword search with score fusion
-- **Neural Reranking**: CrossEncoder for precision improvement on retrieved candidates
-- **Embedding Fine-Tuning**: Domain adaptation achieving 22% MRR and 33% Hits@1 improvement
-- **Rigorous Evaluation**: K-fold cross-validation, negative sampling, multiple metrics
-- **Training Data Engineering**: LLM-powered generation of specific, high-quality Q&A pairs
-- **Production Considerations**: Persistent storage, source citations, timing metrics, clean UI
-- **Modern ML Stack**: LangChain, ChromaDB, Sentence Transformers, Gradio
 
 ## Tech Stack
 
