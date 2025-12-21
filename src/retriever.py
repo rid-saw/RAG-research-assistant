@@ -77,25 +77,39 @@ class HybridRetriever:
     def _build_vector_store(self):
         """Build or load the Chroma vector store."""
         print("Building vector store...")
-        
+
+        if not self.chunks:
+            raise ValueError("Cannot build vector store: no document chunks provided")
+
+        # Filter out empty chunks
+        self.valid_chunks = [chunk for chunk in self.chunks if chunk.page_content.strip()]
+
+        if not self.valid_chunks:
+            raise ValueError(f"All {len(self.chunks)} chunks have empty content")
+
+        print(f"Processing {len(self.valid_chunks)} valid chunks (filtered from {len(self.chunks)} total)")
+
         self.vector_store = Chroma.from_documents(
-            documents=self.chunks,
+            documents=self.valid_chunks,
             embedding=self.embeddings,
             persist_directory=self.persist_directory
         )
-        
-        print(f"Vector store ready with {len(self.chunks)} chunks")
+
+        print(f"Vector store ready with {len(self.valid_chunks)} chunks")
     
     def _build_bm25_index(self):
         """Build BM25 index for keyword search."""
         print("Building BM25 index...")
-        
+
+        # Use valid chunks (already filtered)
+        chunks_to_use = getattr(self, 'valid_chunks', self.chunks)
+
         # Tokenize documents for BM25
         tokenized_docs = [
-            chunk.page_content.lower().split() 
-            for chunk in self.chunks
+            chunk.page_content.lower().split()
+            for chunk in chunks_to_use
         ]
-        
+
         self.bm25 = BM25Okapi(tokenized_docs)
         print("BM25 index ready")
     
@@ -116,25 +130,28 @@ class HybridRetriever:
     def keyword_search(self, query: str, k: int = 5) -> List[Tuple[Document, float]]:
         """
         Search using BM25 (keyword matching).
-        
+
         Args:
             query: Search query
             k: Number of results to return
-            
+
         Returns:
             List of (document, score) tuples
         """
         tokenized_query = query.lower().split()
         scores = self.bm25.get_scores(tokenized_query)
-        
+
+        # Use valid chunks (already filtered)
+        chunks_to_use = getattr(self, 'valid_chunks', self.chunks)
+
         # Get top k indices
         top_indices = np.argsort(scores)[::-1][:k]
-        
+
         results = [
-            (self.chunks[i], scores[i]) 
+            (chunks_to_use[i], scores[i])
             for i in top_indices
         ]
-        
+
         return results
     
     def hybrid_search(

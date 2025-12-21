@@ -13,7 +13,7 @@ from typing import List, Dict
 
 def download_arxiv_pdf(arxiv_id: str, output_dir: str = "data", force: bool = False) -> str:
     """
-    Download a single PDF from arXiv.
+    Downloads a single PDF from arXiv.
 
     Args:
         arxiv_id: arXiv ID (e.g., "1706.03762")
