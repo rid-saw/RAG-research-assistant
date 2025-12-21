@@ -21,7 +21,7 @@ evaluation/chunks_for_qa.json
 
 # Vector database (rebuilt on HF Spaces startup)
 chroma_db/
-interface.png
+# interface.png
 
 # Model weights - include fine-tuned embeddings for deployment
 # models/fine-tuned-embeddings/
