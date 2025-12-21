@@ -132,73 +132,48 @@ Domain-adapted `all-MiniLM-L6-v2` trained on 275 LLM-generated Q&A pairs using `
 
 ## Usage
 
-### Running the Web Interface
+### Running the Demo
 ```bash
 python src/app.py
 # Opens at http://localhost:7860
+# Uses the included ML/AI fine-tuned model
 ```
 
-### Fine-tuning Embeddings
-```bash
-# Generate training data (requires Gemini API)
-python src/generate_training_data.py
-
-# Fine-tune the model
-python src/fine_tune_embeddings.py
-```
-
-### Running Evaluation
+### Evaluating the Fine-tuned Model
 ```bash
 python evaluation/evaluate.py
 # Compares base vs fine-tuned model
 # Results saved to evaluation/evaluation_results.json
 ```
 
-### Adding New Papers
+## Adapting for Your Own Documents
+
+⚠️ **Important:** The included model is optimized for ML/AI papers. To use this on different content, you must retrain.
+
+**Requirements:**
+- Google Gemini API key (for Q&A generation + answer synthesis)
+- ~30-60 minutes for full pipeline
+- PDFs with extractable text (not scanned images)
+
+**Full Pipeline:**
 ```bash
-# 1. Add PDFs to data/
-cp new_paper.pdf data/
+# 1. Replace arxiv_papers.json with your paper IDs/titles
+# 2. Place PDFs in data/ directory
 
-# 2. Clear vector store and restart
-rm -rf chroma_db/
-python src/app.py
-```
-
-## Adapting for Your Own Use
-
-This repository is designed as an educational reference. You can adapt it for your own documents:
-
-### Step 1: Prepare Your Documents
-Replace the contents of `data/` with your own PDFs (research papers, documentation, books, etc.).
-
-### Step 2: Generate Training Data
-```bash
-# Modify src/generate_training_data.py to suit your domain
+# 3. Generate domain-specific Q&A pairs
 python src/generate_training_data.py
-```
 
-This creates Q&A pairs from your documents for fine-tuning.
-
-### Step 3: Fine-tune Embeddings
-```bash
+# 4. Fine-tune embeddings on your data
 python src/fine_tune_embeddings.py
-```
 
-This adapts the embedding model to your domain vocabulary and concepts.
-
-### Step 4: Evaluate
-```bash
+# 5. Evaluate performance
 python evaluation/evaluate.py
-```
 
-Verify improvement over the base model.
-
-### Step 5: Run Your RAG System
-```bash
+# 6. Run with your fine-tuned model
 python src/app.py
 ```
 
-**Note:** The included fine-tuned model (`models/fine-tuned-embeddings/`) is optimized for ML/AI research papers. For best results on different domains, you should re-run the fine-tuning pipeline on your own documents.
+**Expected Performance:** Without retraining on your domain, expect ~0.70 MRR (vs 0.91 on trained domain). The architecture is general-purpose, but embedding quality depends on domain-specific fine-tuning.
 
 ## Copyright & Fair Use
 
