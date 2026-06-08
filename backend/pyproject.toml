@@ -1,0 +1,29 @@
+[project]
+name = "universal-rag-backend"
+version = "0.1.0"
+description = "FastAPI backend for the universal RAG capstone"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "sentence-transformers>=3.3",
+    "chromadb>=0.5.23",
+    "langchain>=0.3",
+    "langchain-huggingface>=0.1",
+    "langchain-chroma>=0.1",
+    "rank-bm25>=0.2.2",
+    "python-multipart>=0.0.12",
+    "python-dotenv>=1.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3",
+    "ruff>=0.7",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"

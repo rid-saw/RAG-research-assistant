@@ -34,3 +34,10 @@ checkpoints/
 
 # Claude instructions
 CLAUDE.md
+
+# v2 backend
+backend/.venv/
+backend/uv.lock
+backend/data/chroma/
+backend/__pycache__/
+backend/**/__pycache__/
