@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 
+from app.api import search
 from app.core.config import settings
 
 app = FastAPI(title="Universal RAG", version="0.1.0")
+
+app.include_router(search.router, prefix="/api", tags=["search"])
 
 
 @app.get("/health")
