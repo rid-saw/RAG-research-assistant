@@ -41,3 +41,9 @@ backend/uv.lock
 backend/data/chroma/
 backend/__pycache__/
 backend/**/__pycache__/
+
+# v2 frontend
+frontend/.venv/
+frontend/uv.lock
+frontend/__pycache__/
+frontend/.gradio/

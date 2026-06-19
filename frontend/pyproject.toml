@@ -1,0 +1,9 @@
+[project]
+name = "universal-rag-frontend"
+version = "0.1.0"
+description = "Gradio UI for the Universal RAG backend"
+requires-python = ">=3.11"
+dependencies = [
+    "gradio>=5.0",
+    "requests>=2.32",
+]
