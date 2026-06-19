@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 from tavily import TavilyClient
 
 from app.core.config import settings

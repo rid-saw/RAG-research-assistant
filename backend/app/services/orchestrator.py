@@ -1,4 +1,4 @@
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from app.services.grader import grade_chunks
 from app.services.llm import generate

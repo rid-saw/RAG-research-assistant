@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 import numpy as np
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from rank_bm25 import BM25Okapi
 
