@@ -1,55 +1,13 @@
 import os
-from pathlib import Path
 
-import gradio as gr
 import requests
+from nicegui import ui
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 TIMEOUT = 120
 
 
-def _format_citations(citations: list[dict]) -> str:
-    if not citations:
-        return ""
-    lines = ["", "**Sources:**"]
-    for i, c in enumerate(citations, start=1):
-        if c.get("page") is not None:
-            label = f"{c['source']} (p.{c['page']})"
-        elif c.get("title"):
-            label = f"{c['title']} — {c['source']}"
-        else:
-            label = c.get("source") or "unknown"
-        lines.append(f"{i}. {label}")
-    return "\n".join(lines)
-
-
-def _format_bot_message(data: dict) -> str:
-    status = data.get("status", "")
-    answer = data.get("answer", "")
-    reason = data.get("reason")
-    rewritten = data.get("rewritten_query")
-    citations_md = _format_citations(data.get("citations", []))
-
-    if status == "answered":
-        return f"{answer}\n{citations_md}"
-
-    if status == "needs_web_search":
-        return (
-            f"⚠️ Not enough info in your library to answer confidently.\n\n"
-            f"**Grader's verdict:** {reason}\n\n"
-            f"Click **Search the web** below to retry with web sources."
-        )
-
-    if status == "answered_from_web":
-        prefix = f"🔍 *Searched the web for:* `{rewritten}`\n\n" if rewritten else ""
-        return f"{prefix}{answer}\n{citations_md}"
-
-    if status == "refused":
-        prefix = f"🔍 *Tried searching the web for:* `{rewritten}`\n\n" if rewritten else ""
-        return f"{prefix}{answer}\n{citations_md}"
-
-    return answer or "(no response)"
-
+# ---------- backend client ----------
 
 def list_libraries() -> list[str]:
     try:
@@ -60,51 +18,42 @@ def list_libraries() -> list[str]:
         return []
 
 
-def create_library(name: str):
-    name = (name or "").strip()
-    if not name:
-        return "Please enter a library name.", gr.update()
+def create_library_api(name: str) -> tuple[bool, str]:
+    try:
+        r = requests.post(f"{BACKEND_URL}/api/libraries", json={"name": name}, timeout=30)
+        r.raise_for_status()
+        return True, f"Created `{name}`."
+    except requests.HTTPError as e:
+        try:
+            detail = e.response.json().get("detail", "Unknown error")
+        except Exception:
+            detail = e.response.text
+        return False, f"Error: {detail}"
+    except Exception as e:
+        return False, f"Backend unreachable: {e}"
+
+
+def upload_pdf_api(library: str, file_bytes: bytes, filename: str) -> tuple[bool, str]:
     try:
         r = requests.post(
-            f"{BACKEND_URL}/api/libraries",
-            json={"name": name},
-            timeout=30,
+            f"{BACKEND_URL}/api/libraries/{library}/documents",
+            files={"file": (filename, file_bytes, "application/pdf")},
+            timeout=TIMEOUT,
         )
         r.raise_for_status()
-    except requests.HTTPError:
-        detail = r.json().get("detail", "Unknown error")
-        return f"Error: {detail}", gr.update()
+        data = r.json()
+        return True, f"Ingested {data['filename']}: {data['pages']} pages → {data['chunks_added']} chunks."
+    except requests.HTTPError as e:
+        try:
+            detail = e.response.json().get("detail", "Unknown error")
+        except Exception:
+            detail = e.response.text
+        return False, f"Error: {detail}"
     except Exception as e:
-        return f"Backend unreachable: {e}", gr.update()
-
-    libs = list_libraries()
-    return f"Created library `{name}`.", gr.update(choices=libs, value=name)
+        return False, f"Backend unreachable: {e}"
 
 
-def upload_pdf(library: str, file_path: str | None):
-    if not library:
-        return "Pick or create a library first."
-    if not file_path:
-        return "No file selected."
-    filename = Path(file_path).name
-    try:
-        with open(file_path, "rb") as f:
-            r = requests.post(
-                f"{BACKEND_URL}/api/libraries/{library}/documents",
-                files={"file": (filename, f, "application/pdf")},
-                timeout=TIMEOUT,
-            )
-        r.raise_for_status()
-    except requests.HTTPError:
-        detail = r.json().get("detail", "Unknown error")
-        return f"Error: {detail}"
-    except Exception as e:
-        return f"Backend unreachable: {e}"
-    data = r.json()
-    return f"Ingested **{data['filename']}**: {data['pages']} pages → {data['chunks_added']} chunks."
-
-
-def _ask(library: str, query: str, allow_web_search: bool) -> dict:
+def ask_api(library: str, query: str, allow_web_search: bool) -> dict:
     try:
         r = requests.post(
             f"{BACKEND_URL}/api/chat",
@@ -117,94 +66,244 @@ def _ask(library: str, query: str, allow_web_search: bool) -> dict:
         )
         r.raise_for_status()
         return r.json()
-    except requests.HTTPError:
-        detail = r.json().get("detail", "Unknown error")
+    except requests.HTTPError as e:
+        try:
+            detail = e.response.json().get("detail", "Unknown error")
+        except Exception:
+            detail = e.response.text
         return {"status": "refused", "answer": f"Backend error: {detail}", "citations": [], "reason": None, "rewritten_query": None}
     except Exception as e:
         return {"status": "refused", "answer": f"Backend unreachable: {e}", "citations": [], "reason": None, "rewritten_query": None}
 
 
-def on_send(library: str, query: str, history: list, last_query_state: str):
-    if not query or not query.strip():
-        return history, "", last_query_state, gr.update(visible=False)
+# ---------- formatters ----------
 
-    history = history + [{"role": "user", "content": query}]
+def format_bot_message(data: dict) -> str:
+    status = data.get("status", "")
+    answer = data.get("answer", "")
+    reason = data.get("reason")
+    rewritten = data.get("rewritten_query")
 
-    if not library:
-        history = history + [{"role": "assistant", "content": "Pick or create a library first."}]
-        return history, "", last_query_state, gr.update(visible=False)
-
-    data = _ask(library, query, allow_web_search=False)
-    history = history + [{"role": "assistant", "content": _format_bot_message(data)}]
-    show_web = data.get("status") == "needs_web_search"
-    return history, "", query, gr.update(visible=show_web)
-
-
-def on_search_web(library: str, history: list, last_query_state: str):
-    if not last_query_state:
-        return history, gr.update(visible=False)
-    data = _ask(library, last_query_state, allow_web_search=True)
-    history = history + [{"role": "assistant", "content": _format_bot_message(data)}]
-    return history, gr.update(visible=False)
-
-
-with gr.Blocks(title="Universal RAG") as app:
-    gr.Markdown(
-        "# Universal RAG\n"
-        "Upload PDFs to a library, then ask questions. If your library can't answer, "
-        "you'll be prompted to search the web."
-    )
-
-    with gr.Row():
-        library_dd = gr.Dropdown(
-            choices=list_libraries(),
-            label="Library",
-            interactive=True,
-            scale=2,
+    if status == "answered":
+        return answer
+    if status == "needs_web_search":
+        return (
+            f"**Not enough info in your library to answer confidently.**\n\n"
+            f"Grader's verdict: *{reason}*\n\n"
+            f"Click **Search the web** below to retry with web sources."
         )
-        new_lib_name = gr.Textbox(label="New library name", placeholder="ml-papers", scale=2)
-        create_lib_btn = gr.Button("Create library", scale=1)
-    create_lib_status = gr.Markdown("")
-
-    with gr.Row():
-        upload = gr.File(label="Upload PDF", file_types=[".pdf"], type="filepath")
-    upload_status = gr.Markdown("")
-
-    chatbot = gr.Chatbot(height=420, label="Chat")
-    last_query = gr.State("")
-
-    with gr.Row():
-        msg = gr.Textbox(placeholder="Ask a question...", scale=4, show_label=False)
-        send_btn = gr.Button("Send", scale=1, variant="primary")
-
-    web_search_btn = gr.Button("🔍 Search the web", visible=False, variant="secondary")
-
-    create_lib_btn.click(
-        create_library,
-        inputs=[new_lib_name],
-        outputs=[create_lib_status, library_dd],
-    )
-    upload.upload(
-        upload_pdf,
-        inputs=[library_dd, upload],
-        outputs=[upload_status],
-    )
-    send_btn.click(
-        on_send,
-        inputs=[library_dd, msg, chatbot, last_query],
-        outputs=[chatbot, msg, last_query, web_search_btn],
-    )
-    msg.submit(
-        on_send,
-        inputs=[library_dd, msg, chatbot, last_query],
-        outputs=[chatbot, msg, last_query, web_search_btn],
-    )
-    web_search_btn.click(
-        on_search_web,
-        inputs=[library_dd, chatbot, last_query],
-        outputs=[chatbot, web_search_btn],
-    )
+    if status == "answered_from_web":
+        prefix = f"*Searched the web for:* `{rewritten}`\n\n" if rewritten else ""
+        return f"{prefix}{answer}"
+    if status == "refused":
+        prefix = f"*Tried searching the web for:* `{rewritten}`\n\n" if rewritten else ""
+        return f"{prefix}{answer}"
+    return answer or "(no response)"
 
 
-if __name__ == "__main__":
-    app.launch(server_name="127.0.0.1", server_port=7860, theme=gr.themes.Soft())
+# ---------- state ----------
+
+state: dict = {
+    "current_library": None,
+    "chat_history": [],
+    "last_query": "",
+    "last_citations": [],
+    "show_web_button": False,
+}
+
+
+# ---------- refreshable views ----------
+
+@ui.refreshable
+def render_chat():
+    if not state["chat_history"]:
+        ui.label("Ask a question to start.").classes("italic text-stone-500 p-8 text-center w-full")
+        return
+    for msg in state["chat_history"]:
+        with ui.row().classes("w-full"):
+            if msg["role"] == "user":
+                ui.element("div").classes("flex-1")
+                with ui.card().tight().classes("max-w-2xl px-4 py-3").style(
+                    "background-color: #e6dec9; border-color: #d8d0bb;"
+                ):
+                    ui.markdown(msg["content"])
+            else:
+                with ui.card().tight().classes("max-w-2xl px-4 py-3").style(
+                    "background-color: #fdfbf7; border-color: #e6dec9;"
+                ):
+                    ui.markdown(msg["content"])
+                ui.element("div").classes("flex-1")
+
+
+@ui.refreshable
+def render_sources():
+    citations = state["last_citations"]
+    if not citations:
+        ui.markdown("**Sources for last answer**").classes("text-lg")
+        ui.label("No sources yet — ask a question above.").classes("italic text-stone-500")
+        return
+    ui.markdown("**Sources for last answer**").classes("text-lg")
+    for i, c in enumerate(citations, start=1):
+        if c.get("page") is not None:
+            label = f"`{c['source']}` (p.{c['page']})"
+        elif c.get("title"):
+            label = f"**{c['title']}** — `{c['source']}`"
+        else:
+            label = f"`{c.get('source') or 'unknown'}`"
+        snippet = (c.get("snippet") or "").replace("\n", " ").strip()
+        if len(snippet) > 160:
+            snippet = snippet[:157] + "..."
+        with ui.card().classes("w-full mt-2").style("background-color: #fdfbf7; border: 1px solid #e6dec9;"):
+            ui.markdown(f"**{i}.** {label}")
+            if snippet:
+                ui.markdown(f"> {snippet}").classes("text-stone-600")
+
+
+@ui.refreshable
+def render_web_button():
+    if state["show_web_button"]:
+        ui.button("Search the web", on_click=on_search_web).props("color=primary outline").classes("mt-2")
+
+
+# ---------- event handlers ----------
+
+def refresh_library_select():
+    libs = list_libraries()
+    current = state["current_library"] if state["current_library"] in libs else (libs[0] if libs else None)
+    library_select.set_options(libs, value=current)
+    state["current_library"] = current
+
+
+def on_create_library():
+    name = (new_lib_input.value or "").strip()
+    if not name:
+        ui.notify("Please enter a library name.", type="warning")
+        return
+    ok, msg = create_library_api(name)
+    if ok:
+        ui.notify(msg)
+        new_lib_input.value = ""
+        state["current_library"] = name
+        refresh_library_select()
+    else:
+        ui.notify(msg, type="negative")
+
+
+def on_upload(e):
+    library = state["current_library"]
+    if not library:
+        ui.notify("Pick or create a library first.", type="warning")
+        return
+    file_bytes = e.content.read()
+    ok, msg = upload_pdf_api(library, file_bytes, e.name)
+    ui.notify(msg, type="positive" if ok else "negative")
+
+
+def on_send():
+    query = (msg_input.value or "").strip()
+    if not query:
+        return
+    library = state["current_library"]
+    if not library:
+        ui.notify("Pick or create a library first.", type="warning")
+        return
+
+    state["chat_history"].append({"role": "user", "content": query})
+    msg_input.value = ""
+    render_chat.refresh()
+
+    data = ask_api(library, query, allow_web_search=False)
+    state["chat_history"].append({"role": "assistant", "content": format_bot_message(data)})
+    state["last_citations"] = data.get("citations", [])
+    state["last_query"] = query
+    state["show_web_button"] = data.get("status") == "needs_web_search"
+
+    render_chat.refresh()
+    render_sources.refresh()
+    render_web_button.refresh()
+
+
+def on_search_web():
+    library = state["current_library"]
+    query = state["last_query"]
+    if not query or not library:
+        return
+    data = ask_api(library, query, allow_web_search=True)
+    state["chat_history"].append({"role": "assistant", "content": format_bot_message(data)})
+    state["last_citations"] = data.get("citations", [])
+    state["show_web_button"] = False
+    render_chat.refresh()
+    render_sources.refresh()
+    render_web_button.refresh()
+
+
+def on_library_change(e):
+    state["current_library"] = e.value
+
+
+# ---------- page ----------
+
+ui.colors(primary="#8b7e60", secondary="#d8d0bb", accent="#c4bba2")
+
+ui.add_head_html("""
+<style>
+  body { background-color: #f5f0e6; color: #2a2520; font-family: ui-sans-serif, system-ui, sans-serif; }
+  .nicegui-content { background-color: #f5f0e6; }
+  .q-card { background-color: #fdfbf7; border: 1px solid #e6dec9; }
+  .q-field__control { background-color: #fdfbf7 !important; }
+  .q-field--outlined .q-field__control:before { border-color: #e6dec9 !important; }
+  .q-btn { font-weight: 500; text-transform: none; }
+  .q-uploader { background-color: #fdfbf7; border: 1px dashed #c4bba2; }
+  .q-uploader__header { background-color: #e6dec9 !important; color: #2a2520 !important; }
+  h1, h2, h3, h4 { color: #2a2520; }
+</style>
+""")
+
+_initial_libs = list_libraries()
+if _initial_libs:
+    state["current_library"] = _initial_libs[0]
+
+with ui.row().classes("w-full max-w-7xl mx-auto p-6 gap-6 items-start"):
+    # Sidebar
+    with ui.column().classes("w-80 gap-2"):
+        ui.label("Universal RAG").classes("text-3xl font-bold")
+        ui.label("Upload PDFs, ask questions, get cited answers.").classes("text-sm text-stone-600 mb-2")
+
+        ui.label("Upload").classes("text-lg font-semibold mt-4")
+        ui.upload(
+            on_upload=on_upload,
+            auto_upload=True,
+            label="Drop a PDF",
+        ).props('accept=".pdf" flat').classes("w-full")
+
+        ui.label("Library").classes("text-lg font-semibold mt-4")
+        library_select = ui.select(
+            options=_initial_libs,
+            value=state["current_library"],
+            label="Active library",
+            on_change=on_library_change,
+        ).classes("w-full")
+        new_lib_input = ui.input(label="New library", placeholder="ml-papers").classes("w-full mt-2")
+        ui.button("Create library", on_click=on_create_library).props("color=primary").classes("w-full mt-2")
+
+    # Main chat
+    with ui.column().classes("flex-1 min-w-0 gap-2"):
+        with ui.card().classes("w-full min-h-[520px]").style("background-color: #fdfbf7;"):
+            render_chat()
+
+        with ui.row().classes("w-full gap-2 items-center"):
+            msg_input = (
+                ui.input(placeholder="Ask a question...")
+                .classes("flex-1")
+                .on("keydown.enter", on_send)
+            )
+            ui.button("Send", on_click=on_send).props("color=primary")
+
+        render_web_button()
+
+ui.separator().classes("my-4")
+with ui.column().classes("w-full max-w-7xl mx-auto px-6 pb-8 gap-2"):
+    render_sources()
+
+
+ui.run(host="127.0.0.1", port=7860, title="Universal RAG", dark=False, show=False, reload=False)
