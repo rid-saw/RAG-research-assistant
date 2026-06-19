@@ -21,5 +21,8 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.3
     llm_max_output_tokens: int = 1024
 
+    tavily_api_key: str | None = None
+    web_search_results: int = 5
+
 
 settings = Settings()
