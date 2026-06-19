@@ -117,18 +117,18 @@ state: dict = {
 @ui.refreshable
 def render_chat():
     if not state["chat_history"]:
-        ui.label("Ask a question to start.").classes("italic text-stone-500 p-8 text-center w-full")
+        ui.label("Ask a question to start.").classes("italic text-stone-500 p-12 text-center w-full")
         return
     for msg in state["chat_history"]:
-        with ui.row().classes("w-full"):
+        with ui.row().classes("w-full mb-3"):
             if msg["role"] == "user":
                 ui.element("div").classes("flex-1")
-                with ui.card().tight().classes("max-w-2xl px-4 py-3").style(
+                with ui.card().tight().classes("max-w-2xl px-6 py-4").style(
                     "background-color: #e6dec9; border-color: #d8d0bb;"
                 ):
                     ui.markdown(msg["content"])
             else:
-                with ui.card().tight().classes("max-w-2xl px-4 py-3").style(
+                with ui.card().tight().classes("max-w-2xl px-6 py-4").style(
                     "background-color: #fdfbf7; border-color: #e6dec9;"
                 ):
                     ui.markdown(msg["content"])
@@ -138,11 +138,10 @@ def render_chat():
 @ui.refreshable
 def render_sources():
     citations = state["last_citations"]
+    ui.label("Sources for last answer").classes("text-2xl font-semibold heading-serif mb-2")
     if not citations:
-        ui.markdown("**Sources for last answer**").classes("text-lg")
         ui.label("No sources yet — ask a question above.").classes("italic text-stone-500")
         return
-    ui.markdown("**Sources for last answer**").classes("text-lg")
     for i, c in enumerate(citations, start=1):
         if c.get("page") is not None:
             label = f"`{c['source']}` (p.{c['page']})"
@@ -153,7 +152,7 @@ def render_sources():
         snippet = (c.get("snippet") or "").replace("\n", " ").strip()
         if len(snippet) > 160:
             snippet = snippet[:157] + "..."
-        with ui.card().classes("w-full mt-2").style("background-color: #fdfbf7; border: 1px solid #e6dec9;"):
+        with ui.card().classes("w-full p-5").style("background-color: #fdfbf7; border: 1px solid #e6dec9;"):
             ui.markdown(f"**{i}.** {label}")
             if snippet:
                 ui.markdown(f"> {snippet}").classes("text-stone-600")
@@ -246,16 +245,79 @@ def on_library_change(e):
 ui.colors(primary="#8b7e60", secondary="#d8d0bb", accent="#c4bba2")
 
 ui.add_head_html("""
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-  body { background-color: #f5f0e6; color: #2a2520; font-family: ui-sans-serif, system-ui, sans-serif; }
+  body {
+    background-color: #f5f0e6;
+    color: #2a2520;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+  }
   .nicegui-content { background-color: #f5f0e6; }
-  .q-card { background-color: #fdfbf7; border: 1px solid #e6dec9; }
-  .q-field__control { background-color: #fdfbf7 !important; }
-  .q-field--outlined .q-field__control:before { border-color: #e6dec9 !important; }
-  .q-btn { font-weight: 500; text-transform: none; }
-  .q-uploader { background-color: #fdfbf7; border: 1px dashed #c4bba2; }
-  .q-uploader__header { background-color: #e6dec9 !important; color: #2a2520 !important; }
-  h1, h2, h3, h4 { color: #2a2520; }
+  .heading-serif {
+    font-family: 'Lora', Georgia, serif !important;
+    letter-spacing: -0.01em;
+    color: #2a2520;
+  }
+  h1, h2, h3, h4, h5 {
+    font-family: 'Lora', Georgia, serif;
+    color: #2a2520;
+    letter-spacing: -0.01em;
+  }
+  .q-card {
+    background-color: #fdfbf7;
+    border: 1px solid #e6dec9;
+    border-radius: 12px;
+    box-shadow: none !important;
+  }
+  .q-field__control {
+    background-color: #fdfbf7 !important;
+    border-radius: 12px !important;
+  }
+  .q-field--outlined .q-field__control:before {
+    border-color: #e6dec9 !important;
+    border-radius: 12px !important;
+  }
+  .q-field--outlined.q-field--focused .q-field__control:after {
+    border-color: #8b7e60 !important;
+  }
+  .q-btn {
+    font-weight: 500;
+    text-transform: none;
+    border-radius: 12px;
+    padding: 10px 22px;
+    box-shadow: none !important;
+    letter-spacing: 0;
+  }
+  .q-btn:before { box-shadow: none !important; }
+  .q-uploader {
+    background-color: #fdfbf7;
+    border: 1px dashed #c4bba2;
+    border-radius: 12px;
+    box-shadow: none !important;
+  }
+  .q-uploader__header {
+    background-color: #e6dec9 !important;
+    color: #2a2520 !important;
+    border-top-left-radius: 11px;
+    border-top-right-radius: 11px;
+  }
+  .q-separator { background-color: #e6dec9 !important; }
+  blockquote {
+    border-left: 2px solid #c4bba2;
+    padding-left: 12px;
+    color: #6b6256;
+    margin: 8px 0;
+  }
+  code {
+    background-color: #f0ebe0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+  }
 </style>
 """)
 
@@ -263,35 +325,35 @@ _initial_libs = list_libraries()
 if _initial_libs:
     state["current_library"] = _initial_libs[0]
 
-with ui.row().classes("w-full max-w-7xl mx-auto p-6 gap-6 items-start"):
+with ui.row().classes("w-full max-w-7xl mx-auto p-10 gap-12 items-start"):
     # Sidebar
-    with ui.column().classes("w-80 gap-2"):
-        ui.label("Universal RAG").classes("text-3xl font-bold")
-        ui.label("Upload PDFs, ask questions, get cited answers.").classes("text-sm text-stone-600 mb-2")
+    with ui.column().classes("w-80 gap-6"):
+        ui.label("Universal RAG").classes("text-4xl font-bold heading-serif")
+        ui.label("Upload PDFs, ask questions, get cited answers.").classes("text-sm text-stone-600 leading-relaxed")
 
-        ui.label("Upload").classes("text-lg font-semibold mt-4")
+        ui.label("Upload").classes("text-2xl font-semibold heading-serif mt-6")
         ui.upload(
             on_upload=on_upload,
             auto_upload=True,
             label="Drop a PDF",
         ).props('accept=".pdf" flat').classes("w-full")
 
-        ui.label("Library").classes("text-lg font-semibold mt-4")
+        ui.label("Library").classes("text-2xl font-semibold heading-serif mt-8")
         library_select = ui.select(
             options=_initial_libs,
             value=state["current_library"],
             label="Active library",
             on_change=on_library_change,
         ).classes("w-full")
-        new_lib_input = ui.input(label="New library", placeholder="ml-papers").classes("w-full mt-2")
-        ui.button("Create library", on_click=on_create_library).props("color=primary").classes("w-full mt-2")
+        new_lib_input = ui.input(label="New library", placeholder="ml-papers").classes("w-full mt-3")
+        ui.button("Create library", on_click=on_create_library).props("color=primary").classes("w-full mt-3")
 
     # Main chat
-    with ui.column().classes("flex-1 min-w-0 gap-2"):
-        with ui.card().classes("w-full min-h-[520px]").style("background-color: #fdfbf7;"):
+    with ui.column().classes("flex-1 min-w-0 gap-4"):
+        with ui.card().classes("w-full min-h-[600px] p-6").style("background-color: #fdfbf7;"):
             render_chat()
 
-        with ui.row().classes("w-full gap-2 items-center"):
+        with ui.row().classes("w-full gap-3 items-center mt-2"):
             msg_input = (
                 ui.input(placeholder="Ask a question...")
                 .classes("flex-1")
@@ -301,8 +363,8 @@ with ui.row().classes("w-full max-w-7xl mx-auto p-6 gap-6 items-start"):
 
         render_web_button()
 
-ui.separator().classes("my-4")
-with ui.column().classes("w-full max-w-7xl mx-auto px-6 pb-8 gap-2"):
+ui.separator().classes("my-8")
+with ui.column().classes("w-full max-w-7xl mx-auto px-10 pb-12 gap-4"):
     render_sources()
 
 
