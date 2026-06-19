@@ -25,6 +25,7 @@ def chat(request: ChatRequest) -> ChatResponse:
     citations = [
         ChatCitation(
             source=doc.metadata.get("source"),
+            title=doc.metadata.get("title"),
             page=doc.metadata.get("page"),
             chunk_id=doc.metadata.get("chunk_id"),
             snippet=doc.page_content[:200],

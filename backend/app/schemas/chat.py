@@ -12,12 +12,13 @@ class ChatRequest(BaseModel):
 
 class ChatCitation(BaseModel):
     source: str | None = None
+    title: str | None = None
     page: int | None = None
     chunk_id: str | None = None
     snippet: str
 
 
-ChatStatus = Literal["answered", "needs_web_search", "answered_from_web"]
+ChatStatus = Literal["answered", "needs_web_search", "answered_from_web", "refused"]
 
 
 class ChatResponse(BaseModel):
