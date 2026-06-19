@@ -1,0 +1,9 @@
+[project]
+name = "universal-rag-mcp"
+version = "0.1.0"
+description = "MCP server exposing the Universal RAG backend as tools"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.0",
+    "requests>=2.32",
+]

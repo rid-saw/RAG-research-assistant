@@ -47,3 +47,8 @@ frontend/.venv/
 frontend/uv.lock
 frontend/__pycache__/
 frontend/.gradio/
+
+# v2 MCP server
+mcp_server/.venv/
+mcp_server/uv.lock
+mcp_server/__pycache__/
