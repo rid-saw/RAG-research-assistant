@@ -27,3 +27,18 @@ def generate(prompt: str, temperature: float | None = None) -> str:
         ),
     )
     return response.text or ""
+
+
+def generate_json(prompt: str, schema: dict, temperature: float = 0.0) -> dict:
+    import json
+
+    response = _client().models.generate_content(
+        model=settings.llm_model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=temperature,
+            response_mime_type="application/json",
+            response_schema=schema,
+        ),
+    )
+    return json.loads(response.text or "{}")
