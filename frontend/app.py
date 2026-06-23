@@ -166,23 +166,26 @@ with st.sidebar:
         st.session_state.show_create = not st.session_state.show_create
 
     if st.session_state.show_create:
-        with st.form("create_lib_form", clear_on_submit=True):
-            new_name = st.text_input("Name", placeholder="ml-papers")
-            submitted = st.form_submit_button("Create", use_container_width=True)
-            if submitted:
-                name = (new_name or "").strip()
-                if not name:
-                    st.warning("Please enter a name.")
+        new_name = st.text_input(
+            "Name",
+            placeholder="ml-papers",
+            key="new_lib_name",
+            label_visibility="collapsed",
+        )
+        if st.button("Create", use_container_width=True, key="create_lib_submit"):
+            name = (new_name or "").strip()
+            if not name:
+                st.warning("Please enter a name.")
+            else:
+                ok, msg = create_library_api(name)
+                if ok:
+                    st.success(msg)
+                    st.session_state.libraries = list_libraries()
+                    st.session_state.current_library = name
+                    st.session_state.show_create = False
+                    st.rerun()
                 else:
-                    ok, msg = create_library_api(name)
-                    if ok:
-                        st.success(msg)
-                        st.session_state.libraries = list_libraries()
-                        st.session_state.current_library = name
-                        st.session_state.show_create = False
-                        st.rerun()
-                    else:
-                        st.error(msg)
+                    st.error(msg)
 
     # Upload only after a library is selected
     if st.session_state.current_library:
@@ -256,7 +259,7 @@ else:
     st.divider()
     with st.expander(
         f"📎 Sources ({len(st.session_state.last_citations)})",
-        expanded=bool(st.session_state.last_citations),
+        expanded=False,
     ):
         citations = st.session_state.last_citations
         if not citations:
