@@ -920,7 +920,9 @@ export default function App() {
                                   <span dangerouslySetInnerHTML={{ __html: renderInlineMd(m.content) }} />
                                 )}
                               </div>
-                              {m.role === "assistant" && (m.citations?.length ?? 0) > 0 && (
+                              {m.role === "assistant" &&
+                                m.status !== "refused" &&
+                                (m.citations?.length ?? 0) > 0 && (
                                 <div className="mt-3 pl-4 border-l border-cream-300">
                                   <div className="text-[10px] uppercase tracking-widest font-semibold text-brown-400 mb-1.5">
                                     Sources

@@ -83,7 +83,7 @@ def run(query: str, collection: str, allow_web_search: bool, top_k: int | None =
             return {
                 "status": "refused",
                 "answer": REFUSAL_MESSAGE,
-                "citations": web_docs,
+                "citations": [],
                 "reason": "Web results were not specific enough to ground an answer.",
                 "rewritten_query": rewritten,
             }
@@ -101,7 +101,7 @@ def run(query: str, collection: str, allow_web_search: bool, top_k: int | None =
         return {
             "status": "refused",
             "answer": REFUSAL_MESSAGE,
-            "citations": chunks,
+            "citations": [],
             "reason": "Retrieved passages did not contain a specific answer.",
             "rewritten_query": None,
         }
@@ -184,7 +184,7 @@ def run_stream(
             yield {
                 "event": "done",
                 "status": "refused",
-                "citations": _citations_payload(web_docs),
+                "citations": [],
                 "reason": "Web results were not specific enough to ground an answer.",
                 "rewritten_query": rewritten,
             }
@@ -210,7 +210,7 @@ def run_stream(
         yield {
             "event": "done",
             "status": "refused",
-            "citations": _citations_payload(chunks),
+            "citations": [],
             "reason": "Retrieved passages did not contain a specific answer.",
             "rewritten_query": None,
         }
