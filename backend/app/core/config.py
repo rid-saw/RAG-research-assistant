@@ -20,9 +20,10 @@ class Settings(BaseSettings):
     candidates_per_search: int = 50
     rerank_top_k: int = 8
 
-    # LLM provider — any OpenAI-compatible API: "openrouter" | "groq" | "gemini" | "openai".
-    llm_provider: str = "openrouter"
-    llm_model: str = "meta-llama/llama-3.3-70b-instruct:free"
+    # LLM provider — any OpenAI-compatible API:
+    # "ollama" (local) | "openrouter" | "groq" | "gemini" | "openai"
+    llm_provider: str = "ollama"
+    llm_model: str = "llama3.2:3b"
     llm_temperature: float = 0.3
     llm_max_output_tokens: int = 1024
 
@@ -30,6 +31,7 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     google_api_key: str | None = None
     openai_api_key: str | None = None
+    ollama_api_key: str | None = None  # unused; ollama is keyless
 
     tavily_api_key: str | None = None
     web_search_results: int = 5

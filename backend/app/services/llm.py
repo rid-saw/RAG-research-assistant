@@ -11,6 +11,7 @@ class LLMConfigError(RuntimeError):
 
 
 PROVIDER_CONFIG = {
+    "ollama": ("ollama_api_key", None, "http://localhost:11434/v1"),
     "openrouter": ("openrouter_api_key", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
     "groq": ("groq_api_key", "GROQ_API_KEY", "https://api.groq.com/openai/v1"),
     "gemini": (
@@ -28,6 +29,9 @@ def _client() -> OpenAI:
     if provider not in PROVIDER_CONFIG:
         raise LLMConfigError(f"Unknown LLM provider: {provider}")
     attr, env_name, base_url = PROVIDER_CONFIG[provider]
+    # Ollama doesn't need an API key — it runs locally
+    if provider == "ollama":
+        return OpenAI(api_key="ollama", base_url=base_url)
     key = getattr(settings, attr)
     if not key:
         raise LLMConfigError(f"{env_name} is not set")
