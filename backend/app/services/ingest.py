@@ -1,11 +1,10 @@
 import uuid
 from pathlib import Path
 
-import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 
-from app.core.config import settings
+from app.core.chroma import get_chroma_client
 from app.services.retriever import get_retriever
 
 
@@ -32,7 +31,7 @@ def ingest_pdf(library: str, pdf_path: Path, filename: str) -> tuple[int, int]:
 
 
 def list_libraries() -> list[tuple[str, int]]:
-    client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
+    client = get_chroma_client()
     out: list[tuple[str, int]] = []
     for col in client.list_collections():
         out.append((col.name, col.count()))
@@ -41,7 +40,7 @@ def list_libraries() -> list[tuple[str, int]]:
 
 def list_library_files(library: str) -> list[tuple[str, int]]:
     """Return [(filename, chunk_count), ...] for the given library."""
-    client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
+    client = get_chroma_client()
     try:
         col = client.get_collection(name=library)
     except Exception:

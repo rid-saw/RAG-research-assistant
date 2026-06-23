@@ -5,6 +5,7 @@ from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from rank_bm25 import BM25Okapi
 
+from app.core.chroma import get_chroma_client
 from app.core.config import settings
 from app.core.embeddings import get_embeddings
 from app.services.reranker import get_reranker
@@ -20,7 +21,7 @@ class HybridRetriever:
         self.vector_store = Chroma(
             collection_name=collection_name,
             embedding_function=get_embeddings(),
-            persist_directory=settings.chroma_persist_dir,
+            client=get_chroma_client(),
         )
         self._documents: List[Document] = []
         self._bm25: BM25Okapi | None = None
