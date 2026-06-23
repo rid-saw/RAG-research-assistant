@@ -20,10 +20,18 @@ class Settings(BaseSettings):
     candidates_per_search: int = 50
     rerank_top_k: int = 8
 
-    google_api_key: str | None = None
-    llm_model: str = "gemini-2.0-flash"
+    # LLM provider — any OpenAI-compatible API:
+    # "mistral" | "gemini" | "openai" | "groq" | "openrouter"
+    llm_provider: str = "mistral"
+    llm_model: str = "mistral-small-latest"
     llm_temperature: float = 0.3
     llm_max_output_tokens: int = 1024
+
+    mistral_api_key: str | None = None
+    google_api_key: str | None = None
+    openai_api_key: str | None = None
+    groq_api_key: str | None = None
+    openrouter_api_key: str | None = None
 
     tavily_api_key: str | None = None
     web_search_results: int = 5
