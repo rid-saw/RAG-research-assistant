@@ -718,37 +718,44 @@ export default function App() {
       />
 
       {/* full-width sticky header */}
-      <header className="h-14 px-8 flex items-center justify-between bg-cream-100/95 backdrop-blur-md border-b border-cream-300 sticky top-0 z-30">
-        <span className="text-[19px] font-serif font-semibold text-brown-700 tracking-tight">
-          Universal RAG
-        </span>
+      <header className="px-8 pt-2.5 pb-2 bg-cream-100/95 backdrop-blur-md border-b border-cream-300 sticky top-0 z-30">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="text-[19px] font-serif font-semibold text-brown-700 tracking-tight leading-none">
+              RAG Research Assistant
+            </span>
+            <span className="text-[11px] font-serif italic text-brown-400 mt-1 tracking-wide">
+              Cited answers, not confident guesses.
+            </span>
+          </div>
 
-        <div className="flex items-center gap-3">
-          {activeLib && currentChat.length > 0 && (
+          <div className="flex items-center gap-3">
+            {activeLib && currentChat.length > 0 && (
+              <button
+                onClick={exportPdf}
+                className="text-xs text-brown-500 hover:text-brown-700 border border-cream-300 hover:border-brown-500 rounded-md px-3 py-1.5 transition"
+              >
+                Export
+              </button>
+            )}
             <button
-              onClick={exportPdf}
-              className="text-xs text-brown-500 hover:text-brown-700 border border-cream-300 hover:border-brown-500 rounded-md px-3 py-1.5 transition"
+              onClick={() => setPaletteOpen(true)}
+              className="text-xs text-brown-400 hover:text-brown-700 flex items-center gap-1.5 border border-cream-300 hover:border-brown-500 rounded-md px-3 py-1.5 transition"
+              title="Switch or create a library"
             >
-              Export
+              <span>Libraries</span>
+              <kbd className="font-mono text-[10px] border border-cream-300 px-1 py-0.5 rounded text-brown-400">
+                ⌘K
+              </kbd>
             </button>
-          )}
-          <button
-            onClick={() => setPaletteOpen(true)}
-            className="text-xs text-brown-400 hover:text-brown-700 flex items-center gap-1.5 border border-cream-300 hover:border-brown-500 rounded-md px-3 py-1.5 transition"
-            title="Switch or create a library"
-          >
-            <span>Libraries</span>
-            <kbd className="font-mono text-[10px] border border-cream-300 px-1 py-0.5 rounded text-brown-400">
-              ⌘K
-            </kbd>
-          </button>
+          </div>
         </div>
       </header>
 
       {/* main */}
       <main>
         {!activeLib ? (
-          <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-8">
+          <div className="min-h-[calc(100vh-4.5rem)] flex items-center justify-center px-8">
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -759,9 +766,9 @@ export default function App() {
                 Welcome
               </h2>
               <p className="text-brown-500 leading-relaxed mb-8 text-[15px]">
-                Ask your PDFs, with citations. Create your first library to get
-                started — each library is its own collection of documents you
-                can chat with.
+                Chat with your papers and get answers grounded in the page they
+                came from. Create your first library to get started — each one
+                is its own collection of PDFs.
               </p>
               <motion.button
                 whileHover={{ scale: 1.03 }}
