@@ -19,6 +19,12 @@ export default {
           700: "#3a2f24",
           800: "#2d1f15",
         },
+        oxblood: {
+          400: "#a64949",
+          500: "#7a2e2e",
+          600: "#5c2222",
+          700: "#421616",
+        },
       },
       fontFamily: {
         serif: ['Lora', 'Georgia', 'serif'],

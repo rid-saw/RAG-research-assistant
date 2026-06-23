@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from functools import lru_cache
 
 from openai import OpenAI
@@ -43,6 +44,25 @@ def generate(prompt: str, temperature: float | None = None) -> str:
         max_tokens=settings.llm_max_output_tokens,
     )
     return response.choices[0].message.content or ""
+
+
+def generate_stream(
+    prompt: str, temperature: float | None = None
+) -> Iterator[str]:
+    """Yield text chunks as the LLM generates them."""
+    stream = _client().chat.completions.create(
+        model=settings.llm_model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=temperature if temperature is not None else settings.llm_temperature,
+        max_tokens=settings.llm_max_output_tokens,
+        stream=True,
+    )
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
 
 
 def generate_json(prompt: str, schema: dict, temperature: float = 0.0) -> dict:
