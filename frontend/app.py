@@ -182,9 +182,80 @@ def build_chat_pdf(library: str, chat: list[dict], citations: list[dict]) -> byt
 
 st.set_page_config(
     page_title="Universal RAG",
-    page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
+)
+
+st.markdown(
+    """
+    <style>
+      html, body, [class*="css"] {
+        font-family: 'Lora', Georgia, 'Times New Roman', serif;
+        color: #3a2f24;
+      }
+      .stApp { background-color: #faf7f2; }
+      section[data-testid="stSidebar"] {
+        background-color: #f0e9da;
+        border-right: 1px solid #e8dfcc;
+      }
+      h1, h2, h3, h4 {
+        font-family: 'Lora', Georgia, serif;
+        color: #3a2f24;
+        letter-spacing: -0.01em;
+      }
+      .stButton button,
+      .stDownloadButton button {
+        background-color: #faf7f2;
+        color: #3a2f24;
+        border: 1px solid #c9b896;
+        border-radius: 6px;
+        box-shadow: none;
+        font-weight: 500;
+      }
+      .stButton button:hover,
+      .stDownloadButton button:hover {
+        background-color: #ede2cd;
+        border-color: #9a8567;
+        color: #3a2f24;
+      }
+      .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #e8dfcc; }
+      .stTabs [data-baseweb="tab"] {
+        font-family: 'Lora', Georgia, serif;
+        color: #6e5640;
+        padding-bottom: 8px;
+      }
+      .stTabs [aria-selected="true"] {
+        color: #3a2f24 !important;
+        border-bottom: 2px solid #9a8567 !important;
+      }
+      div[data-testid="stChatMessage"] {
+        background-color: #fefcf6;
+        border: 1px solid #ece2cb;
+        border-radius: 8px;
+        padding: 12px 16px;
+      }
+      div[data-testid="stChatInput"] textarea {
+        background-color: #fefcf6;
+        border: 1px solid #c9b896;
+        color: #3a2f24;
+      }
+      .stTextInput input,
+      .stFileUploader,
+      .stExpander {
+        background-color: #fefcf6;
+        border-color: #e8dfcc !important;
+      }
+      a, a:visited { color: #6e5640; }
+      code { background-color: #ede2cd; color: #3a2f24; padding: 1px 5px; border-radius: 3px; }
+      blockquote {
+        border-left: 2px solid #9a8567;
+        padding-left: 12px;
+        color: #6e5640;
+      }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -214,7 +285,7 @@ def current_chat() -> list[dict]:
 # ---------- sidebar ----------
 
 with st.sidebar:
-    st.title("📚 Universal RAG")
+    st.title("Universal RAG")
     st.caption("Upload PDFs, ask questions, get cited answers.")
     st.divider()
 
@@ -239,7 +310,7 @@ with st.sidebar:
             st.session_state.pending_web_query = None
             st.rerun()
 
-    if st.button("➕ Create library", use_container_width=True):
+    if st.button("Create library", use_container_width=True):
         st.session_state.show_create = not st.session_state.show_create
 
     if st.session_state.show_create:
@@ -279,19 +350,19 @@ else:
 
     col1, col2 = st.columns([3, 1])
     with col1:
-        st.header(f"💬 {lib}")
+        st.header(lib)
     with col2:
         if chat:
             pdf_bytes = build_chat_pdf(lib, chat, st.session_state.last_citations)
             st.download_button(
-                "📄 Export PDF",
+                "Export PDF",
                 data=pdf_bytes,
                 file_name=f"{lib}-chat.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )
 
-    chat_tab, files_tab = st.tabs(["💬 Chat", "📁 Files"])
+    chat_tab, files_tab = st.tabs(["Chat", "Files"])
 
     # ---------- chat tab ----------
     with chat_tab:
@@ -303,7 +374,7 @@ else:
                 st.markdown(msg["content"])
 
         if st.session_state.pending_web_query:
-            if st.button("🌐 Search the web", type="primary"):
+            if st.button("Search the web", type="primary"):
                 query = st.session_state.pending_web_query
                 with st.spinner("Searching the web..."):
                     data = ask_api(lib, query, allow_web_search=True)
@@ -314,7 +385,7 @@ else:
 
         st.divider()
         with st.expander(
-            f"📎 Sources ({len(st.session_state.last_citations)})",
+            f"Sources ({len(st.session_state.last_citations)})",
             expanded=False,
         ):
             citations = st.session_state.last_citations
@@ -365,7 +436,7 @@ else:
                 with st.container(border=True):
                     c1, c2 = st.columns([4, 1])
                     with c1:
-                        st.markdown(f"📄 **{f['filename']}**")
+                        st.markdown(f"**{f['filename']}**")
                     with c2:
                         st.caption(f"{f['chunk_count']} chunks")
 
