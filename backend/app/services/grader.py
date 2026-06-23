@@ -2,9 +2,9 @@ from langchain_core.documents import Document
 
 from app.services.llm import generate_json
 
-GRADER_PROMPT = """You are evaluating whether the retrieved passages are sufficient to faithfully answer the user's question.
+GRADER_PROMPT = """You are deciding whether the retrieved passages contain enough information to answer the user's question.
 
-Be strict: if the passages only tangentially touch the topic, mark as insufficient. The user can fall back to web search, so it's better to flag uncertainty than to hallucinate.
+Default to "sufficient" if the passages discuss the question's topic or contain partial information that could be combined into an answer. Only mark "insufficient" if the passages are clearly off-topic, contradict the question's premise, or contain none of the information needed to answer.
 
 Question: {query}
 
@@ -12,8 +12,8 @@ Retrieved passages:
 {passages}
 
 Reply with JSON:
-- "sufficient": true if the passages contain enough information to give a grounded, specific answer; false otherwise
-- "reason": one short sentence explaining your verdict (will be shown to the user if insufficient)"""
+- "sufficient": true if the passages discuss the topic and contain answer-relevant information (full or partial); false only if clearly off-topic
+- "reason": one short sentence explaining your verdict (shown to the user if insufficient)"""
 
 
 GRADER_SCHEMA = {

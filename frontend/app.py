@@ -440,13 +440,14 @@ else:
                     with c2:
                         st.caption(f"{f['chunk_count']} chunks")
 
-    # ---------- chat input (sticky bottom, outside tabs so always visible) ----------
-    query = st.chat_input(f"Ask {lib} a question...")
-    if query:
-        chat.append({"role": "user", "content": query})
-        with st.spinner("Thinking..."):
-            data = ask_api(lib, query, allow_web_search=False)
-        chat.append({"role": "assistant", "content": format_bot_message(data), "status": data.get("status")})
-        st.session_state.last_citations = data.get("citations", [])
-        st.session_state.pending_web_query = query if data.get("status") == "needs_web_search" else None
-        st.rerun()
+    # chat input scoped to the chat tab so it only shows when chat is active
+    with chat_tab:
+        query = st.chat_input(f"Ask {lib} a question...")
+        if query:
+            chat.append({"role": "user", "content": query})
+            with st.spinner("Thinking..."):
+                data = ask_api(lib, query, allow_web_search=False)
+            chat.append({"role": "assistant", "content": format_bot_message(data), "status": data.get("status")})
+            st.session_state.last_citations = data.get("citations", [])
+            st.session_state.pending_web_query = query if data.get("status") == "needs_web_search" else None
+            st.rerun()
