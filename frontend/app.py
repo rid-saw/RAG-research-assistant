@@ -1,7 +1,9 @@
 import os
+from datetime import datetime
 
 import requests
 import streamlit as st
+from fpdf import FPDF
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 TIMEOUT = 120
@@ -99,6 +101,72 @@ def format_bot_message(data: dict) -> str:
         prefix = f"_Tried searching the web for:_ `{rewritten}`\n\n" if rewritten else ""
         return f"{prefix}{answer}"
     return answer or "(no response)"
+
+
+# ---------- PDF export ----------
+
+def _latin1_safe(s: str) -> str:
+    repl = {
+        "‘": "'", "’": "'",
+        "“": '"', "”": '"',
+        "—": "--", "–": "-",
+        "…": "...", " ": " ",
+    }
+    for k, v in repl.items():
+        s = s.replace(k, v)
+    return s.encode("latin-1", errors="replace").decode("latin-1")
+
+
+def build_chat_pdf(library: str, chat: list[dict], citations: list[dict]) -> bytes:
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.cell(0, 10, _latin1_safe(f"Chat - {library}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", size=10)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 6, datetime.now().strftime("%Y-%m-%d %H:%M"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+    pdf.set_text_color(0, 0, 0)
+
+    for msg in chat:
+        role = msg.get("role", "")
+        content = _latin1_safe(msg.get("content", ""))
+        status = msg.get("status")
+
+        label = "You" if role == "user" else "Assistant"
+        if status and status != "answered":
+            label = f"{label}  [{status.replace('_', ' ')}]"
+
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(0, 6, label, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", size=11)
+        pdf.multi_cell(0, 5, content, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
+    if citations:
+        pdf.ln(2)
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, "Sources (most recent answer)", new_x="LMARGIN", new_y="NEXT")
+        for i, c in enumerate(citations, 1):
+            if c.get("page") is not None:
+                head = f"{i}. {c.get('source', 'unknown')} (p.{c['page']})"
+            elif c.get("title"):
+                head = f"{i}. {c['title']} - {c.get('source', '')}"
+            else:
+                head = f"{i}. {c.get('source', 'unknown')}"
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.multi_cell(0, 5, _latin1_safe(head), new_x="LMARGIN", new_y="NEXT")
+            snippet = (c.get("snippet") or "").replace("\n", " ").strip()
+            if snippet:
+                pdf.set_font("Helvetica", size=10)
+                pdf.set_text_color(110, 110, 110)
+                pdf.multi_cell(0, 5, _latin1_safe(snippet[:300]), new_x="LMARGIN", new_y="NEXT")
+                pdf.set_text_color(0, 0, 0)
+            pdf.ln(1)
+
+    return bytes(pdf.output())
 
 
 # ---------- page config ----------
@@ -222,9 +290,21 @@ if not st.session_state.current_library:
     )
 else:
     lib = st.session_state.current_library
-    st.header(f"💬 {lib}")
-
     chat = current_chat()
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.header(f"💬 {lib}")
+    with col2:
+        if chat:
+            pdf_bytes = build_chat_pdf(lib, chat, st.session_state.last_citations)
+            st.download_button(
+                "📄 Export PDF",
+                data=pdf_bytes,
+                file_name=f"{lib}-chat.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
 
     if not chat:
         st.info("Ask a question below to start chatting with this library.")
@@ -239,7 +319,7 @@ else:
             query = st.session_state.pending_web_query
             with st.spinner("Searching the web..."):
                 data = ask_api(lib, query, allow_web_search=True)
-            chat.append({"role": "assistant", "content": format_bot_message(data)})
+            chat.append({"role": "assistant", "content": format_bot_message(data), "status": data.get("status")})
             st.session_state.last_citations = data.get("citations", [])
             st.session_state.pending_web_query = None
             st.rerun()
@@ -250,7 +330,7 @@ else:
         chat.append({"role": "user", "content": query})
         with st.spinner("Thinking..."):
             data = ask_api(lib, query, allow_web_search=False)
-        chat.append({"role": "assistant", "content": format_bot_message(data)})
+        chat.append({"role": "assistant", "content": format_bot_message(data), "status": data.get("status")})
         st.session_state.last_citations = data.get("citations", [])
         st.session_state.pending_web_query = query if data.get("status") == "needs_web_search" else None
         st.rerun()
