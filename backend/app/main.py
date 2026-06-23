@@ -2,7 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import chat, libraries, search
+from app.core.chroma import get_chroma_client
 from app.core.config import settings
+
+# Pre-warm the shared chromadb client at import time so the first
+# concurrent batch of requests doesn't race on its lazy creation.
+get_chroma_client()
 
 app = FastAPI(title="Universal RAG", version="0.1.0")
 

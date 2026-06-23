@@ -35,7 +35,7 @@ sleep 1
 
 # Frontend.
 (
-  cd frontend-react
+  cd frontend
   npm run dev 2>&1 \
     | sed -u "s|^|$(printf "${F}[frontend]${R} ")|"
 ) &

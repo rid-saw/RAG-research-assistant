@@ -708,7 +708,7 @@ export default function App() {
   // --------- render ---------
 
   return (
-    <div className="h-screen flex flex-col bg-cream-100 text-brown-700">
+    <div className="min-h-screen bg-cream-100 text-brown-700">
       <CommandPalette
         open={paletteOpen}
         setOpen={setPaletteOpen}
@@ -718,8 +718,8 @@ export default function App() {
       />
 
       {/* full-width sticky header */}
-      <header className="h-16 shrink-0 px-8 flex items-center justify-between bg-cream-100/95 backdrop-blur-sm border-b border-cream-300 sticky top-0 z-30">
-        <span className="text-[22px] font-serif font-semibold text-brown-700 tracking-tight">
+      <header className="h-14 px-8 flex items-center justify-between bg-cream-100/95 backdrop-blur-md border-b border-cream-300 sticky top-0 z-30">
+        <span className="text-[19px] font-serif font-semibold text-brown-700 tracking-tight">
           Universal RAG
         </span>
 
@@ -746,9 +746,9 @@ export default function App() {
       </header>
 
       {/* main */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main>
         {!activeLib ? (
-          <div className="flex-1 flex items-center justify-center px-8">
+          <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-8">
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -778,27 +778,29 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* library heading + tabs */}
-            <div className="px-10 pt-8 pb-0 border-b border-cream-300">
-              <motion.h2
-                key={activeLib}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="text-4xl font-serif text-brown-700 leading-none mb-1"
-              >
-                {activeLib}
-              </motion.h2>
-              <p className="text-xs text-brown-400 mb-5">
-                {libraries.find((l) => l.name === activeLib)?.document_count ?? 0} chunks
-              </p>
+            {/* library heading + tabs — scrolls away with the page */}
+            <div className="px-10 pt-5 pb-0 border-b border-cream-300">
+              <div className="flex items-baseline gap-3 mb-4">
+                <motion.h2
+                  key={activeLib}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="text-2xl font-serif text-brown-700 leading-none"
+                >
+                  {activeLib}
+                </motion.h2>
+                <span className="text-xs text-brown-400">
+                  {libraries.find((l) => l.name === activeLib)?.document_count ?? 0} chunks
+                </span>
+              </div>
 
               <nav className="flex">
                 {(["chat", "files"] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => setTab(t)}
-                    className="relative px-1 py-3 mr-8 text-sm font-medium capitalize transition"
+                    className="relative px-1 py-2.5 mr-8 text-sm font-medium capitalize transition"
                   >
                     <span className={tab === t ? "text-brown-700" : "text-brown-400 hover:text-brown-700"}>
                       {t}
@@ -816,7 +818,7 @@ export default function App() {
 
             {tab === "chat" ? (
               <>
-                <div className="flex-1 overflow-y-auto px-10 py-8">
+                <div className="px-10 py-8 pb-40">
                   <div className="max-w-3xl mx-auto">
                     {currentChat.length === 0 && !isStreaming ? (
                       <motion.div
@@ -919,10 +921,20 @@ export default function App() {
                   </div>
                 </div>
 
-                {pendingWebQuery && !isStreaming && (
-                  <div className="px-10 pb-3">
-                    <div className="max-w-3xl mx-auto">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!query.trim() || isStreaming) return;
+                    const q = query.trim();
+                    setQuery("");
+                    sendQuery(q, false);
+                  }}
+                  className="sticky bottom-0 left-0 right-0 z-20 border-t border-cream-300 bg-cream-100/95 backdrop-blur-md px-10 py-4"
+                >
+                  {pendingWebQuery && !isStreaming && (
+                    <div className="max-w-3xl mx-auto mb-3">
                       <motion.button
+                        type="button"
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         onClick={() => {
@@ -935,19 +947,7 @@ export default function App() {
                         Search the web instead
                       </motion.button>
                     </div>
-                  </div>
-                )}
-
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!query.trim() || isStreaming) return;
-                    const q = query.trim();
-                    setQuery("");
-                    sendQuery(q, false);
-                  }}
-                  className="border-t border-cream-300 px-10 py-5"
-                >
+                  )}
                   <div className="max-w-3xl mx-auto flex gap-3 items-center">
                     <input
                       type="text"
@@ -969,7 +969,7 @@ export default function App() {
                 </form>
               </>
             ) : (
-              <div className="flex-1 overflow-y-auto px-10 py-8">
+              <div className="px-10 py-8 pb-20">
                 <div className="max-w-3xl mx-auto">
                   <section className="mb-10">
                     <h3 className="text-xs uppercase tracking-widest text-brown-400 font-semibold mb-3">
