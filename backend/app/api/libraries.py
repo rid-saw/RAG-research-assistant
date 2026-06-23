@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 
 from app.schemas.library import (
     CreateLibraryRequest,
@@ -11,6 +12,7 @@ from app.schemas.library import (
     ListFilesResponse,
     ListLibrariesResponse,
 )
+from app.services.doi import DOIError, fetch_doi_pdf
 from app.services.ingest import (
     delete_file,
     delete_library,
@@ -19,6 +21,10 @@ from app.services.ingest import (
     list_library_files,
 )
 from app.services.retriever import get_retriever
+
+
+class FromDOIRequest(BaseModel):
+    doi: str = Field(..., min_length=4, max_length=200)
 
 router = APIRouter()
 
@@ -83,6 +89,37 @@ async def upload_document(name: str, file: UploadFile = File(...)) -> IngestResp
     return IngestResponse(
         library=name,
         filename=file.filename,
+        pages=pages,
+        chunks_added=chunks_added,
+    )
+
+
+@router.post(
+    "/libraries/{name}/from_doi",
+    response_model=IngestResponse,
+    status_code=201,
+)
+def upload_from_doi(name: str, request: FromDOIRequest) -> IngestResponse:
+    try:
+        pdf_bytes, filename, _meta = fetch_doi_pdf(request.doi)
+    except DOIError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={"message": str(e), "metadata": e.metadata},
+        )
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(pdf_bytes)
+        tmp_path = Path(tmp.name)
+
+    try:
+        pages, chunks_added = ingest_pdf(name, tmp_path, filename)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    return IngestResponse(
+        library=name,
+        filename=filename,
         pages=pages,
         chunks_added=chunks_added,
     )

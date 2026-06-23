@@ -36,5 +36,9 @@ class Settings(BaseSettings):
     tavily_api_key: str | None = None
     web_search_results: int = 5
 
+    # Required by Unpaywall (they want a contact email in every request).
+    # Override via UNPAYWALL_EMAIL in .env if you want your own to be on file.
+    unpaywall_email: str = "rag-research-assistant@example.com"
+
 
 settings = Settings()

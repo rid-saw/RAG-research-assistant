@@ -457,6 +457,7 @@ export default function App() {
   const [confirmDeleteLib, setConfirmDeleteLib] = useState<string | null>(null);
   const [deletingLib, setDeletingLib] = useState(false);
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
+  const [doiInput, setDoiInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const currentChat = activeLib ? chats[activeLib] ?? [] : [];
@@ -564,6 +565,50 @@ export default function App() {
       return { ok: true };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
+    }
+  }
+
+  async function uploadFromDOI(doi: string) {
+    if (!activeLib) return;
+    setUploadMsg(null);
+    setUploading(true);
+    try {
+      const r = await fetch(`${BACKEND_URL}/api/libraries/${activeLib}/from_doi`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doi }),
+      });
+      if (!r.ok) {
+        let message = r.statusText;
+        let metadata: { title?: string; authors?: string[] } | undefined;
+        try {
+          const detail = (await r.json()).detail;
+          if (typeof detail === "string") {
+            message = detail;
+          } else if (detail && typeof detail === "object") {
+            message = detail.message || message;
+            metadata = detail.metadata;
+          }
+        } catch {
+          // ignore
+        }
+        const extra = metadata?.title
+          ? ` — Found "${metadata.title}"${metadata.authors?.length ? ` (${metadata.authors.slice(0, 3).join(", ")}${metadata.authors.length > 3 ? "…" : ""})` : ""}`
+          : "";
+        setUploadMsg({ ok: false, text: `${message}${extra}` });
+        return;
+      }
+      const data = await r.json();
+      setUploadMsg({
+        ok: true,
+        text: `Ingested ${data.filename}: ${data.pages} pages → ${data.chunks_added} chunks.`,
+      });
+      await refreshFiles(activeLib);
+      await refreshLibraries();
+    } catch (e) {
+      setUploadMsg({ ok: false, text: (e as Error).message });
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -1143,37 +1188,74 @@ export default function App() {
                 <div className="max-w-3xl mx-auto">
                   <section className="mb-10">
                     <h3 className="text-xs uppercase tracking-widest text-brown-400 font-semibold mb-3">
-                      Upload
+                      Add a paper
                     </h3>
-                    <motion.label
-                      whileHover={{ scale: uploading ? 1 : 1.005 }}
-                      className={`block border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition ${
-                        uploading
-                          ? "border-cream-300 bg-cream-50 opacity-50"
-                          : "border-cream-400 bg-cream-50 hover:border-oxblood-500"
-                      }`}
-                    >
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        disabled={uploading}
-                        className="hidden"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) uploadPdf(f);
-                          e.target.value = "";
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <motion.label
+                        whileHover={{ scale: uploading ? 1 : 1.005 }}
+                        className={`block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition ${
+                          uploading
+                            ? "border-cream-300 bg-cream-50 opacity-50"
+                            : "border-cream-400 bg-cream-50 hover:border-oxblood-500"
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          disabled={uploading}
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) uploadPdf(f);
+                            e.target.value = "";
+                          }}
+                        />
+                        <p className="text-brown-700 text-sm font-medium mb-1">
+                          {uploading ? "Working…" : "Drop a PDF"}
+                        </p>
+                        <p className="text-[11px] text-brown-400">PDF · max 10MB</p>
+                      </motion.label>
+
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const d = doiInput.trim();
+                          if (!d || uploading) return;
+                          setDoiInput("");
+                          uploadFromDOI(d);
                         }}
-                      />
-                      <p className="text-brown-500 text-sm">
-                        {uploading ? "Ingesting…" : "Click or drop a research paper here"}
-                      </p>
-                      <p className="text-[11px] text-brown-400 mt-1">PDF · max 10MB</p>
-                    </motion.label>
+                        className="border-2 border-cream-400 rounded-lg p-8 bg-cream-50 flex flex-col justify-center hover:border-oxblood-500 transition"
+                      >
+                        <p className="text-brown-700 text-sm font-medium mb-2 text-center">
+                          Fetch by DOI
+                        </p>
+                        <p className="text-[11px] text-brown-400 mb-3 text-center">
+                          arXiv & open-access publishers
+                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={doiInput}
+                            onChange={(e) => setDoiInput(e.target.value)}
+                            disabled={uploading}
+                            placeholder="10.48550/arXiv.1706.03762"
+                            className="flex-1 px-3 py-2 text-sm bg-cream-100 border border-cream-300 rounded-md focus:outline-none focus:border-oxblood-500 text-brown-700 placeholder:text-brown-400 font-mono"
+                          />
+                          <button
+                            type="submit"
+                            disabled={uploading || !doiInput.trim()}
+                            className="px-4 py-2 text-sm bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition disabled:opacity-40 font-medium"
+                          >
+                            Fetch
+                          </button>
+                        </div>
+                      </form>
+                    </div>
                     {uploadMsg && (
                       <motion.p
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`mt-2 text-sm ${uploadMsg.ok ? "text-brown-500" : "text-oxblood-500"}`}
+                        className={`mt-3 text-sm ${uploadMsg.ok ? "text-brown-500" : "text-oxblood-500"}`}
                       >
                         {uploadMsg.text}
                       </motion.p>
