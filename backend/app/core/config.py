@@ -20,14 +20,16 @@ class Settings(BaseSettings):
     candidates_per_search: int = 50
     rerank_top_k: int = 8
 
-    # LLM provider switch — "groq" or "gemini" (both via OpenAI-compatible API).
-    llm_provider: str = "groq"
-    llm_model: str = "llama-3.3-70b-versatile"
+    # LLM provider — any OpenAI-compatible API: "openrouter" | "groq" | "gemini" | "openai".
+    llm_provider: str = "openrouter"
+    llm_model: str = "meta-llama/llama-3.3-70b-instruct:free"
     llm_temperature: float = 0.3
     llm_max_output_tokens: int = 1024
 
+    openrouter_api_key: str | None = None
     groq_api_key: str | None = None
     google_api_key: str | None = None
+    openai_api_key: str | None = None
 
     tavily_api_key: str | None = None
     web_search_results: int = 5
