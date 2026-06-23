@@ -10,28 +10,24 @@ class LLMConfigError(RuntimeError):
     pass
 
 
-PROVIDER_CONFIG = {
-    "openrouter": ("openrouter_api_key", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
-    "groq": ("groq_api_key", "GROQ_API_KEY", "https://api.groq.com/openai/v1"),
-    "gemini": (
-        "google_api_key",
-        "GOOGLE_API_KEY",
-        "https://generativelanguage.googleapis.com/v1beta/openai/",
-    ),
-    "openai": ("openai_api_key", "OPENAI_API_KEY", "https://api.openai.com/v1"),
+PROVIDER_BASES = {
+    "groq": "https://api.groq.com/openai/v1",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/",
 }
 
 
 @lru_cache(maxsize=1)
 def _client() -> OpenAI:
     provider = settings.llm_provider
-    if provider not in PROVIDER_CONFIG:
-        raise LLMConfigError(f"Unknown LLM provider: {provider}")
-    attr, env_name, base_url = PROVIDER_CONFIG[provider]
-    key = getattr(settings, attr)
-    if not key:
-        raise LLMConfigError(f"{env_name} is not set")
-    return OpenAI(api_key=key, base_url=base_url)
+    if provider == "groq":
+        if not settings.groq_api_key:
+            raise LLMConfigError("GROQ_API_KEY is not set")
+        return OpenAI(api_key=settings.groq_api_key, base_url=PROVIDER_BASES["groq"])
+    if provider == "gemini":
+        if not settings.google_api_key:
+            raise LLMConfigError("GOOGLE_API_KEY is not set")
+        return OpenAI(api_key=settings.google_api_key, base_url=PROVIDER_BASES["gemini"])
+    raise LLMConfigError(f"Unknown LLM provider: {provider}")
 
 
 def generate(prompt: str, temperature: float | None = None) -> str:
