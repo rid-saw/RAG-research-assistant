@@ -720,14 +720,18 @@ export default function App() {
       {/* full-width sticky header */}
       <header className="px-8 pt-2.5 pb-2 bg-cream-100/95 backdrop-blur-md border-b border-cream-300 sticky top-0 z-30">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-[19px] font-serif font-semibold text-brown-700 tracking-tight leading-none">
+          <button
+            onClick={() => setActiveLib(null)}
+            className="flex flex-col text-left group"
+            title="Back to home"
+          >
+            <span className="text-[19px] font-serif font-semibold text-brown-700 tracking-tight leading-none group-hover:text-oxblood-500 transition-colors">
               RAG Research Assistant
             </span>
-            <span className="text-[11px] font-serif italic text-brown-400 mt-1 tracking-wide">
-              Cited answers, not confident guesses.
+            <span className="text-[11px] font-serif italic text-brown-400 mt-1 tracking-wide group-hover:text-brown-500 transition-colors">
+              A research assistant for your own library.
             </span>
-          </div>
+          </button>
 
           <div className="flex items-center gap-3">
             {activeLib && currentChat.length > 0 && (
