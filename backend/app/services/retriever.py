@@ -29,12 +29,38 @@ class HybridRetriever:
     def _hydrate_from_store(self) -> None:
         data = self.vector_store.get()
         if not data.get("ids"):
+            self._documents = []
+            self._bm25 = None
             return
         self._documents = [
             Document(page_content=text, metadata=meta or {})
             for text, meta in zip(data["documents"], data["metadatas"])
         ]
         self._rebuild_bm25()
+
+    def _chroma_count(self) -> int:
+        return self.vector_store._collection.count()
+
+    def _sync_if_stale(self) -> None:
+        """If chroma has more (or fewer) docs than we cached, rehydrate.
+
+        Catches the case where the collection was modified in another process
+        or by a different code path while this retriever instance was alive.
+        """
+        try:
+            disk = self._chroma_count()
+        except Exception:
+            return
+        if disk != len(self._documents):
+            self._hydrate_from_store()
+
+    def stats(self) -> dict:
+        return {
+            "collection": self.collection_name,
+            "in_memory_docs": len(self._documents),
+            "chroma_count": self._chroma_count(),
+            "bm25_ready": self._bm25 is not None,
+        }
 
     def _rebuild_bm25(self) -> None:
         if not self._documents:
@@ -103,6 +129,7 @@ class HybridRetriever:
         return [doc for doc, _ in ranked[:top_k]]
 
     def search(self, query: str, top_k: int | None = None) -> List[Document]:
+        self._sync_if_stale()
         top_k = top_k or settings.rerank_top_k
         candidates = self.hybrid_search(query, k=settings.candidates_per_search)
         return self.rerank(query, candidates, top_k=top_k)

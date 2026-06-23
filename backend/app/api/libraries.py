@@ -42,6 +42,14 @@ def get_library_files(name: str) -> ListFilesResponse:
     )
 
 
+@router.get("/libraries/{name}/debug")
+def debug_library(name: str) -> dict:
+    """Inspect retriever-vs-chroma sync state."""
+    retriever = get_retriever(name)
+    retriever._sync_if_stale()
+    return retriever.stats()
+
+
 @router.post(
     "/libraries/{name}/documents",
     response_model=IngestResponse,
