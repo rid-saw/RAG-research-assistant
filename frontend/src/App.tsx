@@ -759,32 +759,74 @@ export default function App() {
       {/* main */}
       <main>
         {!activeLib ? (
-          <div className="min-h-[calc(100vh-4.5rem)] flex items-center justify-center px-8">
+          <div className="min-h-[calc(100vh-4.5rem)] flex items-center justify-center px-8 py-12">
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="max-w-lg text-center"
+              className={libraries.length > 0 ? "max-w-2xl w-full" : "max-w-lg text-center"}
             >
-              <h2 className="text-6xl font-serif text-brown-700 mb-4 leading-tight">
+              <h2
+                className={`text-6xl font-serif text-brown-700 mb-4 leading-tight ${
+                  libraries.length > 0 ? "text-center" : ""
+                }`}
+              >
                 Welcome
               </h2>
-              <p className="text-brown-500 leading-relaxed mb-8 text-[15px]">
-                Chat with your papers and get answers grounded in the page they
-                came from. Create your first library to get started — each one
-                is its own collection of PDFs.
-              </p>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setPaletteOpen(true)}
-                className="px-7 py-3 bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition text-sm font-medium tracking-wide"
+              <p
+                className={`text-brown-500 leading-relaxed mb-8 text-[15px] ${
+                  libraries.length > 0 ? "text-center" : ""
+                }`}
               >
-                Create your first library
-              </motion.button>
-              <p className="text-[11px] text-brown-400 mt-4 font-mono">
-                or hit ⌘K anytime
+                {libraries.length > 0
+                  ? "Create a new library or pick up where you left off."
+                  : "Chat with your papers and get answers grounded in the page they came from. Create your first library to get started — each one is its own collection of PDFs."}
               </p>
+
+              <div className={libraries.length > 0 ? "text-center" : ""}>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setPaletteOpen(true)}
+                  className="px-7 py-3 bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition text-sm font-medium tracking-wide"
+                >
+                  {libraries.length > 0 ? "Create new library" : "Create your first library"}
+                </motion.button>
+                <p className="text-[11px] text-brown-400 mt-4 font-mono">
+                  or hit ⌘K anytime
+                </p>
+              </div>
+
+              {libraries.length > 0 && (
+                <div className="mt-12">
+                  <div className="flex items-center gap-3 mb-5">
+                    <span className="text-[10px] uppercase tracking-widest font-semibold text-brown-400">
+                      Your libraries
+                    </span>
+                    <span className="flex-1 h-px bg-cream-300" />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {libraries.map((lib, idx) => (
+                      <motion.button
+                        key={lib.name}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05 * idx, duration: 0.25 }}
+                        whileHover={{ y: -2 }}
+                        onClick={() => setActiveLib(lib.name)}
+                        className="text-left px-5 py-4 bg-cream-50 border border-cream-300 rounded-md hover:border-oxblood-500 transition group"
+                      >
+                        <div className="text-base font-serif text-brown-700 group-hover:text-oxblood-500 transition-colors">
+                          {lib.name}
+                        </div>
+                        <div className="text-[11px] text-brown-400 mt-1">
+                          {lib.document_count} chunks
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         ) : (
