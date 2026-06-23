@@ -6,10 +6,12 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from app.schemas.library import (
     CreateLibraryRequest,
     IngestResponse,
+    LibraryFile,
     LibrarySummary,
+    ListFilesResponse,
     ListLibrariesResponse,
 )
-from app.services.ingest import ingest_pdf, list_libraries
+from app.services.ingest import ingest_pdf, list_libraries, list_library_files
 from app.services.retriever import get_retriever
 
 router = APIRouter()
@@ -28,6 +30,15 @@ def get_libraries() -> ListLibrariesResponse:
     libs = list_libraries()
     return ListLibrariesResponse(
         libraries=[LibrarySummary(name=n, document_count=c) for n, c in libs]
+    )
+
+
+@router.get("/libraries/{name}/files", response_model=ListFilesResponse)
+def get_library_files(name: str) -> ListFilesResponse:
+    files = list_library_files(name)
+    return ListFilesResponse(
+        library=name,
+        files=[LibraryFile(filename=f, chunk_count=c) for f, c in files],
     )
 
 

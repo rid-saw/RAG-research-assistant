@@ -19,3 +19,13 @@ class IngestResponse(BaseModel):
     filename: str
     pages: int
     chunks_added: int
+
+
+class LibraryFile(BaseModel):
+    filename: str
+    chunk_count: int
+
+
+class ListFilesResponse(BaseModel):
+    library: str
+    files: list[LibraryFile]

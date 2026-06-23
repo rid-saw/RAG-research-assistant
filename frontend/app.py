@@ -55,6 +55,15 @@ def upload_pdf_api(library: str, file_bytes: bytes, filename: str) -> tuple[bool
         return False, f"Backend unreachable: {e}"
 
 
+def list_library_files(library: str) -> list[dict]:
+    try:
+        r = requests.get(f"{BACKEND_URL}/api/libraries/{library}/files", timeout=10)
+        r.raise_for_status()
+        return r.json().get("files", [])
+    except Exception:
+        return []
+
+
 def ask_api(library: str, query: str, allow_web_search: bool) -> dict:
     try:
         r = requests.post(
@@ -255,30 +264,6 @@ with st.sidebar:
                 else:
                     st.error(msg)
 
-    # Upload only after a library is selected
-    if st.session_state.current_library:
-        st.divider()
-        st.subheader(f"Upload to `{st.session_state.current_library}`")
-        uploaded = st.file_uploader(
-            "Drop a PDF",
-            type=["pdf"],
-            accept_multiple_files=False,
-            label_visibility="collapsed",
-            key=f"upload_{st.session_state.current_library}",
-        )
-        if uploaded is not None:
-            with st.spinner(f"Ingesting {uploaded.name}..."):
-                ok, msg = upload_pdf_api(
-                    st.session_state.current_library,
-                    uploaded.getvalue(),
-                    uploaded.name,
-                )
-            if ok:
-                st.success(msg)
-            else:
-                st.error(msg)
-
-
 # ---------- main ----------
 
 if not st.session_state.current_library:
@@ -306,25 +291,85 @@ else:
                 use_container_width=True,
             )
 
-    if not chat:
-        st.info("Ask a question below to start chatting with this library.")
+    chat_tab, files_tab = st.tabs(["💬 Chat", "📁 Files"])
 
-    for msg in chat:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+    # ---------- chat tab ----------
+    with chat_tab:
+        if not chat:
+            st.info("Ask a question below to start chatting with this library.")
 
-    # Web search button surfaces only when last bot reply asked for it
-    if st.session_state.pending_web_query:
-        if st.button("🌐 Search the web", type="primary"):
-            query = st.session_state.pending_web_query
-            with st.spinner("Searching the web..."):
-                data = ask_api(lib, query, allow_web_search=True)
-            chat.append({"role": "assistant", "content": format_bot_message(data), "status": data.get("status")})
-            st.session_state.last_citations = data.get("citations", [])
-            st.session_state.pending_web_query = None
-            st.rerun()
+        for msg in chat:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-    # Chat input (sticky bottom)
+        if st.session_state.pending_web_query:
+            if st.button("🌐 Search the web", type="primary"):
+                query = st.session_state.pending_web_query
+                with st.spinner("Searching the web..."):
+                    data = ask_api(lib, query, allow_web_search=True)
+                chat.append({"role": "assistant", "content": format_bot_message(data), "status": data.get("status")})
+                st.session_state.last_citations = data.get("citations", [])
+                st.session_state.pending_web_query = None
+                st.rerun()
+
+        st.divider()
+        with st.expander(
+            f"📎 Sources ({len(st.session_state.last_citations)})",
+            expanded=False,
+        ):
+            citations = st.session_state.last_citations
+            if not citations:
+                st.caption("Sources for the most recent answer will appear here.")
+            else:
+                for i, c in enumerate(citations, start=1):
+                    if c.get("page") is not None:
+                        label = f"`{c['source']}` (p.{c['page']})"
+                    elif c.get("title"):
+                        label = f"**{c['title']}** — `{c['source']}`"
+                    else:
+                        label = f"`{c.get('source') or 'unknown'}`"
+                    snippet = (c.get("snippet") or "").replace("\n", " ").strip()
+                    if len(snippet) > 240:
+                        snippet = snippet[:237] + "..."
+                    with st.container(border=True):
+                        st.markdown(f"**{i}.** {label}")
+                        if snippet:
+                            st.caption(snippet)
+
+    # ---------- files tab ----------
+    with files_tab:
+        st.subheader("Upload a PDF")
+        uploaded = st.file_uploader(
+            "Drop a PDF",
+            type=["pdf"],
+            accept_multiple_files=False,
+            label_visibility="collapsed",
+            key=f"upload_{lib}",
+        )
+        if uploaded is not None:
+            with st.spinner(f"Ingesting {uploaded.name}..."):
+                ok, msg = upload_pdf_api(lib, uploaded.getvalue(), uploaded.name)
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
+
+        st.divider()
+
+        files = list_library_files(lib)
+        st.subheader(f"Files in `{lib}` ({len(files)})")
+        if not files:
+            st.caption("No files yet. Upload a PDF above to get started.")
+        else:
+            for f in files:
+                with st.container(border=True):
+                    c1, c2 = st.columns([4, 1])
+                    with c1:
+                        st.markdown(f"📄 **{f['filename']}**")
+                    with c2:
+                        st.caption(f"{f['chunk_count']} chunks")
+
+    # ---------- chat input (sticky bottom, outside tabs so always visible) ----------
     query = st.chat_input(f"Ask {lib} a question...")
     if query:
         chat.append({"role": "user", "content": query})
@@ -334,28 +379,3 @@ else:
         st.session_state.last_citations = data.get("citations", [])
         st.session_state.pending_web_query = query if data.get("status") == "needs_web_search" else None
         st.rerun()
-
-    # ---------- sources ----------
-    st.divider()
-    with st.expander(
-        f"📎 Sources ({len(st.session_state.last_citations)})",
-        expanded=False,
-    ):
-        citations = st.session_state.last_citations
-        if not citations:
-            st.caption("Sources for the most recent answer will appear here.")
-        else:
-            for i, c in enumerate(citations, start=1):
-                if c.get("page") is not None:
-                    label = f"`{c['source']}` (p.{c['page']})"
-                elif c.get("title"):
-                    label = f"**{c['title']}** — `{c['source']}`"
-                else:
-                    label = f"`{c.get('source') or 'unknown'}`"
-                snippet = (c.get("snippet") or "").replace("\n", " ").strip()
-                if len(snippet) > 240:
-                    snippet = snippet[:237] + "..."
-                with st.container(border=True):
-                    st.markdown(f"**{i}.** {label}")
-                    if snippet:
-                        st.caption(snippet)
