@@ -11,7 +11,13 @@ from app.schemas.library import (
     ListFilesResponse,
     ListLibrariesResponse,
 )
-from app.services.ingest import ingest_pdf, list_libraries, list_library_files
+from app.services.ingest import (
+    delete_file,
+    delete_library,
+    ingest_pdf,
+    list_libraries,
+    list_library_files,
+)
 from app.services.retriever import get_retriever
 
 router = APIRouter()
@@ -80,3 +86,16 @@ async def upload_document(name: str, file: UploadFile = File(...)) -> IngestResp
         pages=pages,
         chunks_added=chunks_added,
     )
+
+
+@router.delete("/libraries/{name}", status_code=204)
+def remove_library(name: str) -> None:
+    delete_library(name)
+
+
+@router.delete("/libraries/{name}/files/{filename:path}")
+def remove_file(name: str, filename: str) -> dict:
+    deleted = delete_file(name, filename)
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail="File not found in library")
+    return {"library": name, "filename": filename, "chunks_deleted": deleted}

@@ -454,6 +454,9 @@ export default function App() {
   const [allowWebInStream, setAllowWebInStream] = useState(false);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [confirmDeleteLib, setConfirmDeleteLib] = useState<string | null>(null);
+  const [deletingLib, setDeletingLib] = useState(false);
+  const [deleteErr, setDeleteErr] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const currentChat = activeLib ? chats[activeLib] ?? [] : [];
@@ -505,6 +508,47 @@ export default function App() {
       setFiles(d.files);
     } catch {
       setFiles([]);
+    }
+  }
+
+  async function deleteLibrary(name: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const r = await fetch(`${BACKEND_URL}/api/libraries/${name}`, { method: "DELETE" });
+      if (!r.ok) {
+        let detail = r.statusText;
+        try { detail = (await r.json()).detail || detail; } catch { /* */ }
+        return { ok: false, error: detail };
+      }
+      setChats((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+      if (activeLib === name) setActiveLib(null);
+      await refreshLibraries();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  }
+
+  async function deleteFile(filename: string) {
+    if (!activeLib) return;
+    try {
+      const r = await fetch(
+        `${BACKEND_URL}/api/libraries/${activeLib}/files/${encodeURIComponent(filename)}`,
+        { method: "DELETE" }
+      );
+      if (!r.ok) {
+        let detail = r.statusText;
+        try { detail = (await r.json()).detail || detail; } catch { /* */ }
+        setUploadMsg({ ok: false, text: `Could not delete: ${detail}` });
+        return;
+      }
+      await refreshFiles(activeLib);
+      await refreshLibraries();
+    } catch (e) {
+      setUploadMsg({ ok: false, text: (e as Error).message });
     }
   }
 
@@ -717,6 +761,67 @@ export default function App() {
         onCreate={createLibrary}
       />
 
+      {/* delete-library confirmation modal */}
+      <AnimatePresence>
+        {confirmDeleteLib && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !deletingLib && setConfirmDeleteLib(null)}
+            className="fixed inset-0 z-50 bg-brown-800/40 backdrop-blur-sm flex items-center justify-center px-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: -8 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: -8 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-[420px] max-w-full bg-cream-50 border border-cream-300 rounded-lg shadow-2xl p-6"
+            >
+              <h3 className="text-xl font-serif text-brown-700 mb-2">
+                Delete library?
+              </h3>
+              <p className="text-sm text-brown-500 mb-5 leading-relaxed">
+                This will permanently remove{" "}
+                <span className="font-semibold text-brown-700">{confirmDeleteLib}</span>{" "}
+                and every paper in it. This cannot be undone.
+              </p>
+              {deleteErr && (
+                <p className="text-xs text-oxblood-500 mb-3">{deleteErr}</p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setConfirmDeleteLib(null)}
+                  disabled={deletingLib}
+                  className="px-4 py-2 text-sm text-brown-500 hover:text-brown-700 rounded-md transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!confirmDeleteLib) return;
+                    setDeletingLib(true);
+                    setDeleteErr(null);
+                    const res = await deleteLibrary(confirmDeleteLib);
+                    setDeletingLib(false);
+                    if (res.ok) {
+                      setConfirmDeleteLib(null);
+                    } else {
+                      setDeleteErr(res.error || "Could not delete library.");
+                    }
+                  }}
+                  disabled={deletingLib}
+                  className="px-4 py-2 text-sm font-medium bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition disabled:opacity-50"
+                >
+                  {deletingLib ? "Deleting…" : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* full-width sticky header */}
       <header className="px-8 pt-2.5 pb-2 bg-cream-100/95 backdrop-blur-md border-b border-cream-300 sticky top-0 z-30">
         <div className="flex items-center justify-between">
@@ -780,7 +885,7 @@ export default function App() {
               >
                 {libraries.length > 0
                   ? "Create a new library or pick up where you left off."
-                  : "Chat with your papers and get answers grounded in the page they came from. Create your first library to get started — each one is its own collection of PDFs."}
+                  : "Chat with your research papers and get answers grounded in the page they came from. Create your first library to get started — each one is its own collection of papers."}
               </p>
 
               <div className={libraries.length > 0 ? "text-center" : ""}>
@@ -846,6 +951,16 @@ export default function App() {
                 <span className="text-xs text-brown-400">
                   {libraries.find((l) => l.name === activeLib)?.document_count ?? 0} chunks
                 </span>
+                <button
+                  onClick={() => {
+                    setDeleteErr(null);
+                    setConfirmDeleteLib(activeLib);
+                  }}
+                  className="ml-auto text-[11px] text-brown-400 hover:text-oxblood-500 transition self-center"
+                  title="Delete this library"
+                >
+                  Delete library
+                </button>
               </div>
 
               <nav className="flex">
@@ -1050,7 +1165,7 @@ export default function App() {
                         }}
                       />
                       <p className="text-brown-500 text-sm">
-                        {uploading ? "Ingesting…" : "Click or drop a PDF here"}
+                        {uploading ? "Ingesting…" : "Click or drop a research paper here"}
                       </p>
                       <p className="text-[11px] text-brown-400 mt-1">PDF · max 10MB</p>
                     </motion.label>
@@ -1080,10 +1195,24 @@ export default function App() {
                             key={f.filename}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="flex items-center justify-between p-4 bg-cream-50 hover:bg-cream-100 transition"
+                            className="flex items-center justify-between p-4 bg-cream-50 hover:bg-cream-100 transition group"
                           >
-                            <span className="font-medium text-brown-700 text-sm">{f.filename}</span>
-                            <span className="text-[11px] text-brown-400">{f.chunk_count} chunks</span>
+                            <span className="font-medium text-brown-700 text-sm truncate flex-1 mr-3">
+                              {f.filename}
+                            </span>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-[11px] text-brown-400">
+                                {f.chunk_count} chunks
+                              </span>
+                              <button
+                                onClick={() => deleteFile(f.filename)}
+                                className="w-6 h-6 flex items-center justify-center rounded text-brown-400 hover:text-oxblood-500 hover:bg-cream-200 transition opacity-60 group-hover:opacity-100"
+                                title={`Remove ${f.filename}`}
+                                aria-label={`Remove ${f.filename}`}
+                              >
+                                ×
+                              </button>
+                            </div>
                           </motion.li>
                         ))}
                       </ul>

@@ -143,3 +143,8 @@ def get_retriever(collection_name: str = "default") -> HybridRetriever:
     if collection_name not in _retriever_cache:
         _retriever_cache[collection_name] = HybridRetriever(collection_name)
     return _retriever_cache[collection_name]
+
+
+def invalidate_retriever(collection_name: str) -> None:
+    """Drop the cached retriever for this collection (used after delete)."""
+    _retriever_cache.pop(collection_name, None)
