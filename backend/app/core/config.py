@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     rerank_top_k: int = 8
 
     google_api_key: str | None = None
-    llm_model: str = "gemini-2.5-flash"
+    llm_model: str = "gemini-1.5-flash"
     llm_temperature: float = 0.3
     llm_max_output_tokens: int = 1024
 
