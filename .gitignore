@@ -27,3 +27,8 @@ frontend/**/__pycache__/
 mcp_server/.venv/
 mcp_server/uv.lock
 mcp_server/**/__pycache__/
+
+# React frontend
+frontend-react/node_modules/
+frontend-react/dist/
+frontend-react/.vite/
