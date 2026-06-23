@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const BACKEND_URL =
   (import.meta.env.VITE_BACKEND_URL as string) || "http://localhost:8000";
@@ -94,7 +94,9 @@ const STAGE_LABELS: Record<Stage, string> = {
 const STAGE_ORDER: Stage[] = ["retrieving", "grading", "generating"];
 const STAGE_ORDER_WEB: Stage[] = ["retrieving", "grading", "web_search", "generating"];
 
-// --------- components ---------
+const LIB_NAME_RE = /^[a-zA-Z0-9_\-]+$/;
+
+// --------- citation marker ---------
 
 function CitationMarker({
   index,
@@ -156,7 +158,6 @@ function MarkdownWithCitations({
   text: string;
   citations: Citation[];
 }) {
-  // Split text on [n] markers; render markers as CitationMarker components.
   const parts = useMemo(() => {
     const out: Array<{ kind: "text" | "cite"; value: string }> = [];
     const regex = /\[(\d+)\]/g;
@@ -267,17 +268,58 @@ function PipelineStrip({
   );
 }
 
+// --------- palette (switch + create) ---------
+
 function CommandPalette({
   open,
   setOpen,
   libraries,
   onPick,
+  onCreate,
 }: {
   open: boolean;
   setOpen: (v: boolean) => void;
   libraries: LibrarySummary[];
   onPick: (name: string) => void;
+  onCreate: (name: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createErr, setCreateErr] = useState<string | null>(null);
+
+  // reset on close
+  useEffect(() => {
+    if (!open) {
+      setSearch("");
+      setCreating(false);
+      setCreateErr(null);
+    }
+  }, [open]);
+
+  const trimmed = search.trim();
+  const matches = libraries.filter((l) =>
+    l.name.toLowerCase().includes(trimmed.toLowerCase())
+  );
+  const exact = libraries.find((l) => l.name === trimmed);
+  const canCreate = trimmed.length > 0 && !exact && LIB_NAME_RE.test(trimmed);
+  const showCreateHint = trimmed.length > 0 && !exact;
+
+  async function handleCreate(name: string) {
+    if (!LIB_NAME_RE.test(name)) {
+      setCreateErr("Use letters, numbers, dashes, or underscores only.");
+      return;
+    }
+    setCreating(true);
+    setCreateErr(null);
+    const res = await onCreate(name);
+    setCreating(false);
+    if (res.ok) {
+      setOpen(false);
+    } else {
+      setCreateErr(res.error || "Could not create library.");
+    }
+  }
+
   return (
     <AnimatePresence>
       {open && (
@@ -285,45 +327,107 @@ function CommandPalette({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-brown-800/30 backdrop-blur-sm flex items-start justify-center pt-32"
+          className="fixed inset-0 z-50 bg-brown-800/35 backdrop-blur-sm flex items-start justify-center pt-32"
           onClick={() => setOpen(false)}
         >
           <motion.div
-            initial={{ scale: 0.95, y: -10 }}
+            initial={{ scale: 0.96, y: -8 }}
             animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.95, y: -10 }}
-            transition={{ duration: 0.15 }}
+            exit={{ scale: 0.96, y: -8 }}
+            transition={{ duration: 0.14 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-[520px] max-w-[90vw] bg-cream-50 border border-cream-300 rounded-lg shadow-2xl overflow-hidden"
+            className="w-[560px] max-w-[92vw] bg-cream-50 border border-cream-300 rounded-lg shadow-2xl overflow-hidden"
           >
-            <Command className="w-full" loop>
+            <Command className="w-full" loop label="Library switcher">
               <Command.Input
                 autoFocus
-                placeholder="Switch library…"
-                className="w-full px-4 py-3 bg-transparent border-b border-cream-300 text-brown-700 placeholder:text-brown-400 focus:outline-none font-medium"
+                value={search}
+                onValueChange={setSearch}
+                placeholder="Search libraries or type a new name…"
+                className="w-full px-5 py-4 bg-transparent border-b border-cream-300 text-brown-700 placeholder:text-brown-400 focus:outline-none text-[15px]"
               />
               <Command.List className="max-h-80 overflow-y-auto p-2">
-                <Command.Empty className="px-3 py-6 text-center text-sm text-brown-400">
-                  No libraries match.
-                </Command.Empty>
-                <Command.Group heading="Libraries" className="text-[10px] uppercase tracking-wider text-brown-400 px-3 pt-2 pb-1">
-                  {libraries.map((lib) => (
+                {matches.length === 0 && !canCreate && (
+                  <Command.Empty className="px-3 py-6 text-center text-sm text-brown-400">
+                    No libraries match.
+                  </Command.Empty>
+                )}
+
+                {matches.length > 0 && (
+                  <Command.Group
+                    heading="Libraries"
+                    className="text-[10px] uppercase tracking-widest text-brown-400 px-3 pt-2 pb-1 font-semibold"
+                  >
+                    {matches.map((lib) => (
+                      <Command.Item
+                        key={lib.name}
+                        value={`switch ${lib.name}`}
+                        onSelect={() => {
+                          onPick(lib.name);
+                          setOpen(false);
+                        }}
+                        className="flex items-center justify-between px-3 py-2 rounded-md text-sm text-brown-700 cursor-pointer data-[selected=true]:bg-oxblood-500 data-[selected=true]:text-cream-50"
+                      >
+                        <span className="font-medium">{lib.name}</span>
+                        <span className="text-xs opacity-70">{lib.document_count} chunks</span>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
+
+                <Command.Group
+                  heading="Create"
+                  className="text-[10px] uppercase tracking-widest text-brown-400 px-3 pt-2 pb-1 font-semibold"
+                >
+                  {showCreateHint && canCreate ? (
                     <Command.Item
-                      key={lib.name}
-                      value={lib.name}
-                      onSelect={() => {
-                        onPick(lib.name);
-                        setOpen(false);
-                      }}
+                      key={`create-${trimmed}`}
+                      value={`create ${trimmed}`}
+                      onSelect={() => handleCreate(trimmed)}
                       className="flex items-center justify-between px-3 py-2 rounded-md text-sm text-brown-700 cursor-pointer data-[selected=true]:bg-oxblood-500 data-[selected=true]:text-cream-50"
                     >
-                      <span className="font-medium">{lib.name}</span>
-                      <span className="text-xs opacity-70">{lib.document_count} chunks</span>
+                      <span className="font-medium">
+                        + Create library <span className="font-semibold">"{trimmed}"</span>
+                      </span>
+                      {creating && <span className="text-xs opacity-70">creating…</span>}
                     </Command.Item>
-                  ))}
+                  ) : (
+                    <Command.Item
+                      key="create-prompt"
+                      value="__create_prompt__"
+                      onSelect={() => {}}
+                      disabled
+                      className="px-3 py-2 rounded-md text-xs text-brown-400 italic"
+                    >
+                      Type a name above to create a new library.
+                    </Command.Item>
+                  )}
                 </Command.Group>
+
+                {createErr && (
+                  <div className="px-3 py-2 text-xs text-oxblood-500">{createErr}</div>
+                )}
+                {trimmed.length > 0 && !exact && !canCreate && (
+                  <div className="px-3 py-2 text-xs text-brown-400">
+                    Names must use letters, numbers, dashes, or underscores.
+                  </div>
+                )}
               </Command.List>
             </Command>
+            <div className="border-t border-cream-300 px-4 py-2 text-[10px] text-brown-400 flex items-center gap-4">
+              <span>
+                <kbd className="font-mono border border-cream-300 px-1 py-0.5 rounded">↑↓</kbd>{" "}
+                move
+              </span>
+              <span>
+                <kbd className="font-mono border border-cream-300 px-1 py-0.5 rounded">↵</kbd>{" "}
+                select
+              </span>
+              <span>
+                <kbd className="font-mono border border-cream-300 px-1 py-0.5 rounded">esc</kbd>{" "}
+                close
+              </span>
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -331,14 +435,11 @@ function CommandPalette({
   );
 }
 
-// --------- main app ---------
+// --------- main ---------
 
 export default function App() {
   const [libraries, setLibraries] = useState<LibrarySummary[]>([]);
   const [activeLib, setActiveLib] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newLibName, setNewLibName] = useState("");
-  const [createError, setCreateError] = useState<string | null>(null);
   const [tab, setTab] = useState<"chat" | "files">("chat");
   const [chats, setChats] = useState<Record<string, Message[]>>({});
   const [files, setFiles] = useState<LibraryFile[]>([]);
@@ -357,7 +458,6 @@ export default function App() {
 
   const currentChat = activeLib ? chats[activeLib] ?? [] : [];
 
-  // initial loads
   useEffect(() => {
     refreshLibraries();
   }, []);
@@ -374,7 +474,6 @@ export default function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentChat.length, streamingText, isStreaming]);
 
-  // ⌘K palette
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -409,22 +508,18 @@ export default function App() {
     }
   }
 
-  async function createLibrary() {
-    const name = newLibName.trim();
-    if (!name) return;
-    setCreateError(null);
+  async function createLibrary(name: string): Promise<{ ok: boolean; error?: string }> {
     try {
       await api("/api/libraries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
-      setNewLibName("");
-      setShowCreate(false);
       await refreshLibraries();
       setActiveLib(name);
+      return { ok: true };
     } catch (e) {
-      setCreateError(String((e as Error).message));
+      return { ok: false, error: (e as Error).message };
     }
   }
 
@@ -446,7 +541,7 @@ export default function App() {
       await refreshFiles(activeLib);
       await refreshLibraries();
     } catch (e) {
-      setUploadMsg({ ok: false, text: String((e as Error).message) });
+      setUploadMsg({ ok: false, text: (e as Error).message });
     } finally {
       setUploading(false);
     }
@@ -528,7 +623,6 @@ export default function App() {
           }
         }
 
-        // commit final message
         const finalAnswer = accumulated || (final?.status === "needs_web_search" ? "" : "(no response)");
         const refusalMsg =
           "I couldn't find a reliable answer in the available sources. Try rephrasing your question, or add more documents to this library.";
@@ -619,167 +713,109 @@ export default function App() {
         open={paletteOpen}
         setOpen={setPaletteOpen}
         libraries={libraries}
-        onPick={(name) => {
-          setActiveLib(name);
-        }}
+        onPick={(name) => setActiveLib(name)}
+        onCreate={createLibrary}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* sidebar */}
-        <aside className="w-72 shrink-0 bg-cream-200 border-r border-cream-300 flex flex-col">
-          <div className="px-6 pt-6 pb-4 border-b border-cream-300">
-            <h1 className="text-xl font-serif font-semibold text-brown-700">
-              Universal RAG
-            </h1>
-            <p className="text-xs text-brown-500 mt-1 leading-relaxed">
-              Ask your PDFs, with citations.
-            </p>
+      {/* full-width sticky header */}
+      <header className="h-16 shrink-0 px-8 flex items-center justify-between bg-cream-100/95 backdrop-blur-sm border-b border-cream-300 sticky top-0 z-30">
+        <div className="flex items-center gap-1">
+          <span className="text-[22px] font-serif font-semibold text-brown-700 tracking-tight">
+            Universal RAG
+          </span>
+        </div>
+
+        {/* center: clickable library indicator that opens palette */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setPaletteOpen(true)}
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-1.5 rounded-md border border-cream-300 hover:border-brown-500 bg-cream-50/70 hover:bg-cream-50 transition group"
+          title="Switch library (⌘K)"
+        >
+          <span className="text-[11px] uppercase tracking-widest text-brown-400 font-semibold">
+            Library
+          </span>
+          <span className="text-sm text-brown-700 font-medium">
+            {activeLib ?? "—"}
+          </span>
+          <motion.span
+            className="text-brown-400 text-xs"
+            animate={{ y: [0, 1, 0] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+          >
+            ⌄
+          </motion.span>
+        </motion.button>
+
+        <div className="flex items-center gap-3">
+          {activeLib && currentChat.length > 0 && (
             <button
-              onClick={() => setPaletteOpen(true)}
-              className="mt-3 w-full text-left text-xs text-brown-400 hover:text-brown-700 flex items-center justify-between px-2 py-1.5 rounded-md border border-cream-300 bg-cream-50/60 hover:bg-cream-50 transition"
+              onClick={exportPdf}
+              className="text-xs text-brown-500 hover:text-brown-700 border border-cream-300 hover:border-brown-500 rounded-md px-3 py-1.5 transition"
             >
-              <span>Quick switch…</span>
-              <kbd className="font-mono text-[10px] text-brown-400 border border-cream-300 px-1 py-0.5 rounded">
-                ⌘K
-              </kbd>
+              Export
             </button>
-          </div>
+          )}
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="text-xs text-brown-400 hover:text-brown-700 flex items-center gap-1 border border-cream-300 hover:border-brown-500 rounded-md px-2.5 py-1.5 transition font-mono"
+            title="Open command palette"
+          >
+            <span>⌘K</span>
+          </button>
+        </div>
+      </header>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4">
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h2 className="text-[10px] uppercase tracking-widest text-brown-500 font-semibold">
-                Libraries
+      {/* main */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {!activeLib ? (
+          <div className="flex-1 flex items-center justify-center px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="max-w-lg text-center"
+            >
+              <h2 className="text-6xl font-serif text-brown-700 mb-4 leading-tight">
+                Welcome
               </h2>
-              <motion.button
-                whileTap={{ scale: 0.92 }}
-                onClick={() => setShowCreate((s) => !s)}
-                className="text-brown-500 hover:text-brown-700 w-6 h-6 rounded hover:bg-cream-300 transition flex items-center justify-center"
-                title="Create library"
-              >
-                <span className="text-lg leading-none">{showCreate ? "−" : "+"}</span>
-              </motion.button>
-            </div>
-
-            <AnimatePresence>
-              {showCreate && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden mb-3"
-                >
-                  <div className="p-3 bg-cream-50 border border-cream-300 rounded-md">
-                    <input
-                      type="text"
-                      value={newLibName}
-                      placeholder="ml-papers"
-                      onChange={(e) => setNewLibName(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && createLibrary()}
-                      autoFocus
-                      className="w-full px-2 py-1.5 text-sm bg-cream-100 border border-cream-300 rounded focus:outline-none focus:border-oxblood-500 text-brown-700"
-                    />
-                    {createError && (
-                      <p className="text-xs text-oxblood-500 mt-1">{createError}</p>
-                    )}
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={createLibrary}
-                        className="flex-1 px-3 py-1.5 text-sm bg-oxblood-500 text-cream-50 rounded hover:bg-oxblood-600 transition"
-                      >
-                        Create
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowCreate(false);
-                          setNewLibName("");
-                          setCreateError(null);
-                        }}
-                        className="px-3 py-1.5 text-sm text-brown-500 hover:text-brown-700 transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {libraries.length === 0 && !showCreate && (
-              <p className="text-xs text-brown-400 italic px-1">
-                No libraries yet. Click + to create one.
+              <p className="text-brown-500 leading-relaxed mb-8 text-[15px]">
+                Ask your PDFs, with citations. Create your first library to get
+                started — each library is its own collection of documents you
+                can chat with.
               </p>
-            )}
-
-            <ul className="space-y-0.5">
-              {libraries.map((lib) => (
-                <li key={lib.name}>
-                  <motion.button
-                    whileHover={{ x: 2 }}
-                    onClick={() => setActiveLib(lib.name)}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition relative ${
-                      lib.name === activeLib
-                        ? "bg-oxblood-500 text-cream-50"
-                        : "text-brown-700 hover:bg-cream-300"
-                    }`}
-                  >
-                    <div className="font-medium leading-snug">{lib.name}</div>
-                    <div
-                      className={`text-[11px] mt-0.5 ${
-                        lib.name === activeLib ? "text-cream-200/80" : "text-brown-400"
-                      }`}
-                    >
-                      {lib.document_count} chunks
-                    </div>
-                  </motion.button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </aside>
-
-        {/* main */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {!activeLib ? (
-            <div className="flex-1 flex items-center justify-center p-10">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="max-w-md text-center"
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setPaletteOpen(true)}
+                className="px-7 py-3 bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition text-sm font-medium tracking-wide"
               >
-                <h2 className="text-4xl font-serif text-brown-700 mb-3">Welcome</h2>
-                <p className="text-brown-500 leading-relaxed">
-                  Create a library in the sidebar to get started. Each library
-                  is its own collection of PDFs you can chat with, with cited
-                  answers and an opt-in web fallback.
-                </p>
-              </motion.div>
-            </div>
-          ) : (
-            <>
-              <header className="px-10 pt-8 pb-4 border-b border-cream-300">
-                <div className="flex items-end justify-between">
-                  <motion.h2
-                    key={activeLib}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-4xl font-serif text-brown-700 leading-none"
-                  >
-                    {activeLib}
-                  </motion.h2>
-                  {currentChat.length > 0 && (
-                    <button
-                      onClick={exportPdf}
-                      className="text-xs text-brown-500 hover:text-brown-700 border border-cream-400 hover:border-brown-500 rounded-md px-3 py-1.5 transition"
-                    >
-                      Export PDF
-                    </button>
-                  )}
-                </div>
-              </header>
+                Create your first library
+              </motion.button>
+              <p className="text-[11px] text-brown-400 mt-4 font-mono">
+                or hit ⌘K anytime
+              </p>
+            </motion.div>
+          </div>
+        ) : (
+          <>
+            {/* library heading + tabs */}
+            <div className="px-10 pt-8 pb-0 border-b border-cream-300">
+              <motion.h2
+                key={activeLib}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl font-serif text-brown-700 leading-none mb-1"
+              >
+                {activeLib}
+              </motion.h2>
+              <p className="text-xs text-brown-400 mb-5">
+                {libraries.find((l) => l.name === activeLib)?.document_count ?? 0} chunks
+              </p>
 
-              <nav className="flex border-b border-cream-300 px-10">
+              <nav className="flex">
                 {(["chat", "files"] as const).map((t) => (
                   <button
                     key={t}
@@ -798,235 +834,234 @@ export default function App() {
                   </button>
                 ))}
               </nav>
+            </div>
 
-              {tab === "chat" ? (
-                <>
-                  <div className="flex-1 overflow-y-auto px-10 py-8">
-                    <div className="max-w-3xl mx-auto">
-                      {currentChat.length === 0 && !isStreaming ? (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.4 }}
-                          className="mt-8"
-                        >
-                          <p className="text-brown-500 italic mb-5">
-                            Ask {activeLib} a question to start, or try one of these:
-                          </p>
-                          <div className="space-y-2">
-                            {SUGGESTED_QUESTIONS.map((q) => (
-                              <motion.button
-                                key={q}
-                                whileHover={{ x: 3 }}
-                                onClick={() => sendQuery(q, false)}
-                                disabled={isStreaming}
-                                className="w-full text-left px-4 py-3 bg-cream-50 border border-cream-300 rounded-md text-sm text-brown-700 hover:border-oxblood-500 hover:bg-cream-50 transition disabled:opacity-50"
-                              >
-                                {q}
-                              </motion.button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <div className="space-y-6">
-                          <AnimatePresence initial={false}>
-                            {currentChat.map((m, i) => (
-                              <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.25 }}
-                              >
-                                <div className="text-[10px] uppercase tracking-widest font-semibold text-brown-400 mb-1.5">
-                                  {m.role === "user" ? "You" : "Assistant"}
-                                </div>
-                                <div className="text-brown-700 leading-relaxed text-[15px]">
-                                  {m.role === "assistant" ? (
-                                    <MarkdownWithCitations
-                                      text={m.content}
-                                      citations={m.citations ?? []}
-                                    />
-                                  ) : (
-                                    <span dangerouslySetInnerHTML={{ __html: renderInlineMd(m.content) }} />
-                                  )}
-                                </div>
-                                {m.role === "assistant" && (m.citations?.length ?? 0) > 0 && (
-                                  <div className="mt-3 pl-4 border-l border-cream-300">
-                                    <div className="text-[10px] uppercase tracking-widest font-semibold text-brown-400 mb-1.5">
-                                      Sources
-                                    </div>
-                                    <ol className="text-xs text-brown-500 space-y-1">
-                                      {m.citations!.map((c, ci) => (
-                                        <li key={ci}>
-                                          <span className="text-oxblood-500 font-semibold mr-1">
-                                            {ci + 1}.
-                                          </span>
-                                          {c.page != null
-                                            ? `${c.source} (p.${c.page})`
-                                            : c.title
-                                            ? `${c.title} — ${c.source ?? ""}`
-                                            : c.source ?? "unknown"}
-                                        </li>
-                                      ))}
-                                    </ol>
-                                  </div>
-                                )}
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-
-                          {/* live streaming assistant turn */}
-                          {isStreaming && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                            >
-                              <div className="text-[10px] uppercase tracking-widest font-semibold text-brown-400 mb-1.5">
-                                Assistant
-                              </div>
-                              <div className="mb-3">
-                                <PipelineStrip
-                                  stage={stage}
-                                  done={false}
-                                  allowWeb={allowWebInStream}
-                                />
-                              </div>
-                              {streamingText ? (
-                                <div className="text-brown-700 leading-relaxed text-[15px]">
-                                  <MarkdownWithCitations text={streamingText} citations={[]} />
-                                  <span className="inline-block w-1.5 h-4 bg-oxblood-500 ml-0.5 align-middle animate-pulse" />
-                                </div>
-                              ) : null}
-                            </motion.div>
-                          )}
-                          <div ref={chatEndRef} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {pendingWebQuery && !isStreaming && (
-                    <div className="px-10 pb-3">
-                      <div className="max-w-3xl mx-auto">
-                        <motion.button
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          onClick={() => {
-                            const q = pendingWebQuery;
-                            setPendingWebQuery(null);
-                            sendQuery(q, true);
-                          }}
-                          className="px-4 py-2 bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition text-sm font-medium"
-                        >
-                          Search the web instead
-                        </motion.button>
-                      </div>
-                    </div>
-                  )}
-
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (!query.trim() || isStreaming) return;
-                      const q = query.trim();
-                      setQuery("");
-                      sendQuery(q, false);
-                    }}
-                    className="border-t border-cream-300 px-10 py-5"
-                  >
-                    <div className="max-w-3xl mx-auto flex gap-3 items-center">
-                      <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder={`Ask ${activeLib}…`}
-                        disabled={isStreaming}
-                        className="flex-1 px-4 py-3 bg-cream-50 border border-cream-300 rounded-md focus:outline-none focus:border-oxblood-500 text-brown-700 placeholder:text-brown-400 transition"
-                      />
-                      <motion.button
-                        whileTap={{ scale: 0.96 }}
-                        type="submit"
-                        disabled={isStreaming || !query.trim()}
-                        className="px-5 py-3 bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition disabled:opacity-40 font-medium text-sm"
-                      >
-                        Send
-                      </motion.button>
-                    </div>
-                  </form>
-                </>
-              ) : (
+            {tab === "chat" ? (
+              <>
                 <div className="flex-1 overflow-y-auto px-10 py-8">
                   <div className="max-w-3xl mx-auto">
-                    <section className="mb-10">
-                      <h3 className="text-xs uppercase tracking-widest text-brown-400 font-semibold mb-3">
-                        Upload
-                      </h3>
-                      <motion.label
-                        whileHover={{ scale: uploading ? 1 : 1.005 }}
-                        className={`block border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition ${
-                          uploading
-                            ? "border-cream-300 bg-cream-50 opacity-50"
-                            : "border-cream-400 bg-cream-50 hover:border-oxblood-500"
-                        }`}
+                    {currentChat.length === 0 && !isStreaming ? (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.4 }}
+                        className="mt-8"
                       >
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          disabled={uploading}
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) uploadPdf(f);
-                            e.target.value = "";
-                          }}
-                        />
-                        <p className="text-brown-500 text-sm">
-                          {uploading ? "Ingesting…" : "Click or drop a PDF here"}
+                        <p className="text-brown-500 italic mb-5">
+                          Ask {activeLib} a question to start, or try one of these:
                         </p>
-                        <p className="text-[11px] text-brown-400 mt-1">PDF · max 10MB</p>
-                      </motion.label>
-                      {uploadMsg && (
-                        <motion.p
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`mt-2 text-sm ${uploadMsg.ok ? "text-brown-500" : "text-oxblood-500"}`}
-                        >
-                          {uploadMsg.text}
-                        </motion.p>
-                      )}
-                    </section>
-
-                    <section>
-                      <h3 className="text-xs uppercase tracking-widest text-brown-400 font-semibold mb-3">
-                        Files ({files.length})
-                      </h3>
-                      {files.length === 0 ? (
-                        <p className="text-sm text-brown-400 italic">
-                          No files yet. Upload one above.
-                        </p>
-                      ) : (
-                        <ul className="divide-y divide-cream-300 border border-cream-300 rounded-md overflow-hidden">
-                          {files.map((f) => (
-                            <motion.li
-                              key={f.filename}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="flex items-center justify-between p-4 bg-cream-50 hover:bg-cream-100 transition"
+                        <div className="space-y-2">
+                          {SUGGESTED_QUESTIONS.map((q) => (
+                            <motion.button
+                              key={q}
+                              whileHover={{ x: 3 }}
+                              onClick={() => sendQuery(q, false)}
+                              disabled={isStreaming}
+                              className="w-full text-left px-4 py-3 bg-cream-50 border border-cream-300 rounded-md text-sm text-brown-700 hover:border-oxblood-500 transition disabled:opacity-50"
                             >
-                              <span className="font-medium text-brown-700 text-sm">{f.filename}</span>
-                              <span className="text-[11px] text-brown-400">{f.chunk_count} chunks</span>
-                            </motion.li>
+                              {q}
+                            </motion.button>
                           ))}
-                        </ul>
-                      )}
-                    </section>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <div className="space-y-6">
+                        <AnimatePresence initial={false}>
+                          {currentChat.map((m, i) => (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.25 }}
+                            >
+                              <div className="text-[10px] uppercase tracking-widest font-semibold text-brown-400 mb-1.5">
+                                {m.role === "user" ? "You" : "Assistant"}
+                              </div>
+                              <div className="text-brown-700 leading-relaxed text-[15px]">
+                                {m.role === "assistant" ? (
+                                  <MarkdownWithCitations
+                                    text={m.content}
+                                    citations={m.citations ?? []}
+                                  />
+                                ) : (
+                                  <span dangerouslySetInnerHTML={{ __html: renderInlineMd(m.content) }} />
+                                )}
+                              </div>
+                              {m.role === "assistant" && (m.citations?.length ?? 0) > 0 && (
+                                <div className="mt-3 pl-4 border-l border-cream-300">
+                                  <div className="text-[10px] uppercase tracking-widest font-semibold text-brown-400 mb-1.5">
+                                    Sources
+                                  </div>
+                                  <ol className="text-xs text-brown-500 space-y-1">
+                                    {m.citations!.map((c, ci) => (
+                                      <li key={ci}>
+                                        <span className="text-oxblood-500 font-semibold mr-1">
+                                          {ci + 1}.
+                                        </span>
+                                        {c.page != null
+                                          ? `${c.source} (p.${c.page})`
+                                          : c.title
+                                          ? `${c.title} — ${c.source ?? ""}`
+                                          : c.source ?? "unknown"}
+                                      </li>
+                                    ))}
+                                  </ol>
+                                </div>
+                              )}
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+
+                        {isStreaming && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                          >
+                            <div className="text-[10px] uppercase tracking-widest font-semibold text-brown-400 mb-1.5">
+                              Assistant
+                            </div>
+                            <div className="mb-3">
+                              <PipelineStrip
+                                stage={stage}
+                                done={false}
+                                allowWeb={allowWebInStream}
+                              />
+                            </div>
+                            {streamingText ? (
+                              <div className="text-brown-700 leading-relaxed text-[15px]">
+                                <MarkdownWithCitations text={streamingText} citations={[]} />
+                                <span className="inline-block w-1.5 h-4 bg-oxblood-500 ml-0.5 align-middle animate-pulse" />
+                              </div>
+                            ) : null}
+                          </motion.div>
+                        )}
+                        <div ref={chatEndRef} />
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </>
-          )}
-        </main>
-      </div>
+
+                {pendingWebQuery && !isStreaming && (
+                  <div className="px-10 pb-3">
+                    <div className="max-w-3xl mx-auto">
+                      <motion.button
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={() => {
+                          const q = pendingWebQuery;
+                          setPendingWebQuery(null);
+                          sendQuery(q, true);
+                        }}
+                        className="px-4 py-2 bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition text-sm font-medium"
+                      >
+                        Search the web instead
+                      </motion.button>
+                    </div>
+                  </div>
+                )}
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!query.trim() || isStreaming) return;
+                    const q = query.trim();
+                    setQuery("");
+                    sendQuery(q, false);
+                  }}
+                  className="border-t border-cream-300 px-10 py-5"
+                >
+                  <div className="max-w-3xl mx-auto flex gap-3 items-center">
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder={`Ask ${activeLib}…`}
+                      disabled={isStreaming}
+                      className="flex-1 px-4 py-3 bg-cream-50 border border-cream-300 rounded-md focus:outline-none focus:border-oxblood-500 text-brown-700 placeholder:text-brown-400 transition"
+                    />
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      type="submit"
+                      disabled={isStreaming || !query.trim()}
+                      className="px-5 py-3 bg-oxblood-500 text-cream-50 rounded-md hover:bg-oxblood-600 transition disabled:opacity-40 font-medium text-sm"
+                    >
+                      Send
+                    </motion.button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <div className="flex-1 overflow-y-auto px-10 py-8">
+                <div className="max-w-3xl mx-auto">
+                  <section className="mb-10">
+                    <h3 className="text-xs uppercase tracking-widest text-brown-400 font-semibold mb-3">
+                      Upload
+                    </h3>
+                    <motion.label
+                      whileHover={{ scale: uploading ? 1 : 1.005 }}
+                      className={`block border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition ${
+                        uploading
+                          ? "border-cream-300 bg-cream-50 opacity-50"
+                          : "border-cream-400 bg-cream-50 hover:border-oxblood-500"
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        disabled={uploading}
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) uploadPdf(f);
+                          e.target.value = "";
+                        }}
+                      />
+                      <p className="text-brown-500 text-sm">
+                        {uploading ? "Ingesting…" : "Click or drop a PDF here"}
+                      </p>
+                      <p className="text-[11px] text-brown-400 mt-1">PDF · max 10MB</p>
+                    </motion.label>
+                    {uploadMsg && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`mt-2 text-sm ${uploadMsg.ok ? "text-brown-500" : "text-oxblood-500"}`}
+                      >
+                        {uploadMsg.text}
+                      </motion.p>
+                    )}
+                  </section>
+
+                  <section>
+                    <h3 className="text-xs uppercase tracking-widest text-brown-400 font-semibold mb-3">
+                      Files ({files.length})
+                    </h3>
+                    {files.length === 0 ? (
+                      <p className="text-sm text-brown-400 italic">
+                        No files yet. Upload one above.
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-cream-300 border border-cream-300 rounded-md overflow-hidden">
+                        {files.map((f) => (
+                          <motion.li
+                            key={f.filename}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex items-center justify-between p-4 bg-cream-50 hover:bg-cream-100 transition"
+                          >
+                            <span className="font-medium text-brown-700 text-sm">{f.filename}</span>
+                            <span className="text-[11px] text-brown-400">{f.chunk_count} chunks</span>
+                          </motion.li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
 }
