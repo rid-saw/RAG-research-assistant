@@ -719,34 +719,9 @@ export default function App() {
 
       {/* full-width sticky header */}
       <header className="h-16 shrink-0 px-8 flex items-center justify-between bg-cream-100/95 backdrop-blur-sm border-b border-cream-300 sticky top-0 z-30">
-        <div className="flex items-center gap-1">
-          <span className="text-[22px] font-serif font-semibold text-brown-700 tracking-tight">
-            Universal RAG
-          </span>
-        </div>
-
-        {/* center: clickable library indicator that opens palette */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setPaletteOpen(true)}
-          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-1.5 rounded-md border border-cream-300 hover:border-brown-500 bg-cream-50/70 hover:bg-cream-50 transition group"
-          title="Switch library (⌘K)"
-        >
-          <span className="text-[11px] uppercase tracking-widest text-brown-400 font-semibold">
-            Library
-          </span>
-          <span className="text-sm text-brown-700 font-medium">
-            {activeLib ?? "—"}
-          </span>
-          <motion.span
-            className="text-brown-400 text-xs"
-            animate={{ y: [0, 1, 0] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-          >
-            ⌄
-          </motion.span>
-        </motion.button>
+        <span className="text-[22px] font-serif font-semibold text-brown-700 tracking-tight">
+          Universal RAG
+        </span>
 
         <div className="flex items-center gap-3">
           {activeLib && currentChat.length > 0 && (
@@ -759,10 +734,13 @@ export default function App() {
           )}
           <button
             onClick={() => setPaletteOpen(true)}
-            className="text-xs text-brown-400 hover:text-brown-700 flex items-center gap-1 border border-cream-300 hover:border-brown-500 rounded-md px-2.5 py-1.5 transition font-mono"
-            title="Open command palette"
+            className="text-xs text-brown-400 hover:text-brown-700 flex items-center gap-1.5 border border-cream-300 hover:border-brown-500 rounded-md px-3 py-1.5 transition"
+            title="Switch or create a library"
           >
-            <span>⌘K</span>
+            <span>Libraries</span>
+            <kbd className="font-mono text-[10px] border border-cream-300 px-1 py-0.5 rounded text-brown-400">
+              ⌘K
+            </kbd>
           </button>
         </div>
       </header>

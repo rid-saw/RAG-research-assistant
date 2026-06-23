@@ -5,6 +5,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# Free the ports if a previous run is still holding them.
+for port in 8000 5173; do
+  pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+  if [ -n "$pids" ]; then
+    echo "freeing port $port (pids: $pids)"
+    kill $pids 2>/dev/null || true
+    sleep 0.4
+  fi
+done
+
 # Kill all child processes on exit / interrupt.
 trap 'kill 0' EXIT INT TERM
 
