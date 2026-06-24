@@ -198,11 +198,6 @@ Notes for the demo deploy:
 - Cold start after sleep is ~30–60s while the embedding + reranker models load into memory.
 - Local development is unaffected by any of this — `./dev.sh` still runs backend + Vite separately, and the Dockerfile is only touched by the container host.
 
-## Roadmap
-
-- [ ] Demo GIF in the README
-- [ ] Persistent chat history (currently per-session)
-
 ## Acknowledgements
 
 - Corrective-RAG idea adapted from Yan et al., 2024.
