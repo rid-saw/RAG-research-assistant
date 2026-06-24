@@ -6,7 +6,7 @@ colorTo: yellow
 sdk: docker
 app_port: 7860
 pinned: false
-short_description: Chat with research papers — cited answers, never confident guesses.
+short_description: Chat with research papers. Cited answers, no guesses.
 ---
 
 # RAG Research Assistant
