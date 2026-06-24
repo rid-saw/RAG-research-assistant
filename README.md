@@ -1,14 +1,3 @@
----
-title: RAG Research Assistant
-emoji: 📚
-colorFrom: red
-colorTo: yellow
-sdk: docker
-app_port: 7860
-pinned: false
-short_description: Chat with research papers. Cited answers, no guesses.
----
-
 # RAG Research Assistant
 
 > A research assistant for your own library. Cited answers, not confident guesses.
