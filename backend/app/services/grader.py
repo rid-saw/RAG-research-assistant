@@ -4,11 +4,27 @@ from app.services.llm import generate_json
 
 GRADER_PROMPT = """You decide whether the retrieved passages from the user's library can answer their question.
 
-The user uploaded these papers and is asking about them. Treat the library as the intended context: if a term in the question matches a concept, method, model, or entity discussed in the passages, that is what the user means — even if the same word has a more common meaning elsewhere. Do not second-guess the user's intent based on dictionary definitions or external knowledge.
+THE LIBRARY IS THE INTENDED CONTEXT. The user uploaded these papers because they want to know what's in them. If a term in the question matches a concept, method, model, system, or entity discussed in the passages, that IS what the user is asking about. You must NOT refuse on the grounds that the word has a different common meaning in everyday usage.
 
-Mark "sufficient" if the passages discuss the question's subject, define a term it asks about, or contain partial information that could be combined into an answer.
+Examples of correct behavior:
 
-Mark "insufficient" only if the passages genuinely do not address the question in any form — for example, the user asks about a topic the passages never mention.
+Example 1 (sufficient — term defined in passages):
+  Question: "what is hydrant?"
+  Passages define Hydrant as a hybrid ML model for time series classification.
+  Verdict: sufficient=true. The library defines the term; that is the user's question.
+  (Refusing because "hydrant" usually means a water device would be WRONG.)
+
+Example 2 (sufficient — partial info):
+  Question: "how does attention scale with sequence length?"
+  Passages mention quadratic complexity but don't give a full derivation.
+  Verdict: sufficient=true. Partial information can be combined into an answer.
+
+Example 3 (insufficient — truly off-topic):
+  Question: "what is the climate of Madagascar?"
+  Passages discuss neural network architectures.
+  Verdict: sufficient=false. Passages do not address the topic in any form.
+
+Now grade the actual query:
 
 Question: {query}
 
