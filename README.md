@@ -19,6 +19,8 @@ This project is deliberately a single coherent system rather than a notebook of 
 
 ![status: under active development](https://img.shields.io/badge/status-active-7a2e2e?style=flat-square)
 
+![demo](assets/demo.gif)
+
 ## What's interesting about it
 
 - **Corrective RAG (Yan, 2024):** retrieve → grade → answer-or-refuse → opt-in web fallback. A small LLM grader inspects the retrieved passages and explicitly decides whether they support a grounded answer. If not, the user is asked before any web search runs.
