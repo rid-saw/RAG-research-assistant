@@ -2,8 +2,13 @@ import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+// In production builds (Docker / HF Spaces) we ship the frontend from the
+// same FastAPI process, so an empty string means "same origin, use
+// relative URLs". In dev (Vite on :5173) we hit the backend on :8000.
+// `??` (not `||`) so an explicit "" at build time is respected.
 const BACKEND_URL =
-  (import.meta.env.VITE_BACKEND_URL as string) || "http://localhost:8000";
+  (import.meta.env.VITE_BACKEND_URL as string | undefined) ??
+  (import.meta.env.PROD ? "" : "http://localhost:8000");
 
 // --------- types ---------
 

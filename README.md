@@ -1,3 +1,14 @@
+---
+title: RAG Research Assistant
+emoji: 📚
+colorFrom: red
+colorTo: yellow
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Chat with research papers — cited answers, never confident guesses.
+---
+
 # RAG Research Assistant
 
 > A research assistant for your own library. Cited answers, not confident guesses.
@@ -177,9 +188,27 @@ All config is via env vars (see `.env.example`). The main ones:
 | `TAVILY_API_KEY` | — | Optional; enables web fallback |
 | `UNPAYWALL_EMAIL` | placeholder | Real email recommended for DOI lookups |
 
+## Deploy
+
+The repo ships a single multi-stage `Dockerfile` that builds the React frontend and serves it from the same FastAPI process. The default target is Hugging Face Spaces, but the image runs anywhere a container does.
+
+**Hugging Face Spaces:**
+
+```bash
+# Add the Space as a second git remote alongside origin (GitHub)
+git remote add hf https://huggingface.co/spaces/<your-username>/<space-name>
+git push hf main
+```
+
+In Space Settings → set SDK to **Docker** and add three secrets: `MISTRAL_API_KEY`, `TAVILY_API_KEY` (optional, for web fallback), `UNPAYWALL_EMAIL`. The build runs automatically on push.
+
+Notes for the demo deploy:
+- Without a persistent disk add-on, uploaded libraries evaporate when the Space sleeps (48h idle). Fine for a demo; not a production guarantee.
+- Cold start after sleep is ~30–60s while the embedding + reranker models load into memory.
+- Local development is unaffected by any of this — `./dev.sh` still runs backend + Vite separately, and the Dockerfile is only touched by the container host.
+
 ## Roadmap
 
-- [ ] Dockerize + deploy backend + frontend to Cloud Run with rate limiting
 - [ ] Demo GIF in the README
 - [ ] Persistent chat history (currently per-session)
 

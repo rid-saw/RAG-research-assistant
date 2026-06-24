@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api import chat, libraries, search
 from app.core.chroma import get_chroma_client
@@ -35,3 +38,16 @@ def health() -> dict[str, str]:
         "embedding_model": settings.embedding_model,
         "reranker_model": settings.reranker_model,
     }
+
+
+# If a built React frontend exists, serve it from the same process.
+# Only kicks in for container deploys (where the Dockerfile builds the
+# frontend into frontend/dist). Local dev has no dist/ so this no-ops
+# and the Vite dev server keeps serving the UI separately on :5173.
+_FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if _FRONTEND_DIST.is_dir():
+    app.mount(
+        "/",
+        StaticFiles(directory=_FRONTEND_DIST, html=True),
+        name="frontend",
+    )
